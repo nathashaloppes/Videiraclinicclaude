@@ -13,11 +13,11 @@ module MercadoPago
       if resp[:status] == 200
         success(resp[:response])
       else
-        Rails.logger.warn("[MercadoPago::PaymentFinder] not found id=#{@provider_payment_id} status=#{resp[:status]}")
+        log_warn("not found id=#{@provider_payment_id} status=#{resp[:status]}")
         success(nil)
       end
     rescue => e
-      Rails.logger.error("[MercadoPago::PaymentFinder] #{e.class}: #{e.message}")
+      log_error("#{e.class}: #{e.message}")
       failure(e.message)
     end
   end

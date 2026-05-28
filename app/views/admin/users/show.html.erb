@@ -6,9 +6,8 @@
   <div class="flex items-center gap-3 mb-5">
     <%= render "shared/avatar", user: @user, size: "lg" %>
     <div>
-      <h1 class="text-xl font-medium" style="color: #5D4037"><%= @user.name %></h1>
-      <span class="text-xs px-2 py-0.5 rounded-full"
-            style="<%= @user.owner? ? 'background-color:#fef8e1;color:#5D4037' : 'background-color:#F5F5F5;color:#757575' %>">
+      <h1 class="text-xl font-medium text-vdc-primary"><%= @user.name %></h1>
+      <span class="text-xs px-2 py-0.5 rounded-full <%= @user.owner? ? 'bg-vdc-background text-vdc-primary' : 'badge-neutral' %>">
         <%= @user.role %>
       </span>
     </div>
@@ -18,20 +17,20 @@
     </button>
   </div>
 
-  <div class="flex flex-col gap-2 text-sm" style="color: #8D6E63">
-    <p><strong style="color:#3E2723">E-mail:</strong> <%= @user.email %></p>
-    <p><strong style="color:#3E2723">Telefone:</strong> <%= @user.phone.present? ? format_phone(@user.phone) : "—" %></p>
-    <p><strong style="color:#3E2723">CPF:</strong> <%= @user.cpf.present? ? format_cpf(@user.cpf) : "—" %></p>
-    <p><strong style="color:#3E2723">Nascimento:</strong> <%= @user.birth_date ? l(@user.birth_date, format: :default) : "—" %></p>
-    <p><strong style="color:#3E2723">Cadastro:</strong> <%= l(@user.created_at, format: :default) %></p>
-    <p><strong style="color:#3E2723">Login via:</strong> <%= @user.provider&.humanize || "Email/senha" %></p>
+  <div class="flex flex-col gap-0">
+    <%= detail_row "E-mail",     @user.email %>
+    <%= detail_row "Telefone",   @user.phone.present? ? format_phone(@user.phone) : nil %>
+    <%= detail_row "CPF",        @user.cpf.present? ? format_cpf(@user.cpf) : nil %>
+    <%= detail_row "Nascimento", @user.birth_date ? l(@user.birth_date, format: :default) : nil %>
+    <%= detail_row "Cadastro",   l(@user.created_at, format: :default) %>
+    <%= detail_row "Login via",  @user.provider&.humanize || "Email/senha", border: false %>
   </div>
 </div>
 
 <div class="bg-white rounded-2xl shadow-sm p-5 mb-4">
-  <h2 class="font-medium mb-4" style="color: #5D4037">Últimas reservas</h2>
+  <h2 class="font-medium mb-4 text-vdc-primary">Últimas reservas</h2>
   <% if @booking_groups.empty? %>
-    <p class="text-sm" style="color: #8D6E63">Sem reservas.</p>
+    <p class="text-sm text-vdc-secondary">Sem reservas.</p>
   <% else %>
     <div class="flex flex-col gap-3">
       <% @booking_groups.each do |group| %>
@@ -40,12 +39,12 @@
             <span class="<%= booking_group_status_badge(group.status) %>">
               <%= t("booking_group.status.#{group.status}") %>
             </span>
-            <span class="text-xs ml-2" style="color: #8D6E63">
+            <span class="text-xs ml-2 text-vdc-secondary">
               <%= pluralize(group.bookings.size, "horário", "horários") %> · <%= l(group.created_at, format: :default) %>
             </span>
           </div>
           <div class="flex items-center gap-2">
-            <span class="text-sm font-medium" style="color: #5D4037">R$ <%= money(group.total_cents) %></span>
+            <span class="text-sm font-medium text-vdc-primary">R$ <%= money(group.total_cents) %></span>
             <%= link_to "Ver", admin_booking_path(group), class: "btn-xs-outline" %>
           </div>
         </div>
@@ -56,13 +55,13 @@
 
 <% unless @versions.empty? %>
   <div class="bg-white rounded-2xl shadow-sm p-5">
-    <h2 class="font-medium mb-4" style="color: #5D4037">Histórico</h2>
+    <h2 class="font-medium mb-4 text-vdc-primary">Histórico</h2>
     <div class="flex flex-col gap-3">
       <% @versions.each do |v| %>
-        <div class="text-xs border-l-2 pl-3" style="border-color: #C9B8A8">
-          <p class="font-medium" style="color: #3E2723"><%= v.event %></p>
-          <p style="color: #8D6E63"><%= l(v.created_at, format: :default) %></p>
-          <p style="color: #8D6E63">Por: <%= v.whodunnit&.truncate(20) || "sistema" %></p>
+        <div class="text-xs border-l-2 pl-3 border-vdc-accent">
+          <p class="font-medium text-vdc-foreground"><%= v.event %></p>
+          <p class="text-vdc-secondary"><%= l(v.created_at, format: :default) %></p>
+          <p class="text-vdc-secondary">Por: <%= v.whodunnit&.truncate(20) || "sistema" %></p>
         </div>
       <% end %>
     </div>

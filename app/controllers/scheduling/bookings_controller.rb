@@ -30,7 +30,8 @@ class Scheduling::BookingsController < ApplicationController
       return redirect_to root_path, alert: result.error
     end
 
-    @pricing = result.value
+    @pricing  = result.value
+    @dentists = User.dentists.where(clinic: clinic).order(:name) if current_user.owner?
   end
 
   def create
@@ -40,17 +41,39 @@ class Scheduling::BookingsController < ApplicationController
       return redirect_to root_path, alert: "Selecione ao menos um horário antes de continuar."
     end
 
-    result = BookingGroupCreator.call(
-      user:             current_user,
-      availability_ids: cart_ids
-    )
+    if current_user.owner? && params[:dentist_id].present?
+      clinic  = Availability.find_by(id: cart_ids.first)&.clinic
+      dentist = User.dentists.where(clinic: clinic).find_by(id: params[:dentist_id])
 
-    if result.success?
-      session.delete(:cart_ids)
-      redirect_to pagamento_path(result.value.payment),
-        notice: "Reserva criada! Conclua o pagamento via Pix."
+      unless dentist
+        return redirect_to confirmar_reservas_path, alert: "Dentista não encontrado."
+      end
+
+      result = AdminBookingGroupCreator.call(
+        availability_ids: cart_ids,
+        dentist:          dentist
+      )
+
+      if result.success?
+        session.delete(:cart_ids)
+        redirect_to admin_booking_path(result.value),
+          notice: "Reserva criada para #{dentist.name}."
+      else
+        redirect_to confirmar_reservas_path, alert: result.error
+      end
     else
-      redirect_to confirmar_reservas_path, alert: result.error
+      result = BookingGroupCreator.call(
+        user:             current_user,
+        availability_ids: cart_ids
+      )
+
+      if result.success?
+        session.delete(:cart_ids)
+        redirect_to pagamento_path(result.value.payment),
+          notice: "Reserva criada! Conclua o pagamento via Pix."
+      else
+        redirect_to confirmar_reservas_path, alert: result.error
+      end
     end
   end
 

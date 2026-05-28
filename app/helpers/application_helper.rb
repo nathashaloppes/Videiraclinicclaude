@@ -1,23 +1,41 @@
 module ApplicationHelper
   include Pagy::Frontend
 
-  def booking_group_status_badge(status)
-    {
+  BADGE_CLASSES = {
+    booking_group: {
       "pending"   => "badge-warning",
       "confirmed" => "badge-success",
       "cancelled" => "badge-neutral",
       "expired"   => "badge-danger"
-    }.fetch(status.to_s, "badge-neutral")
-  end
-
-  def payment_status_badge(status)
-    {
+    },
+    payment: {
       "pending"   => "badge-warning",
       "paid"      => "badge-success",
       "failed"    => "badge-danger",
       "cancelled" => "badge-neutral",
       "expired"   => "badge-danger"
-    }.fetch(status.to_s, "badge-neutral")
+    }
+  }.freeze
+
+  def booking_group_status_badge(status)
+    BADGE_CLASSES[:booking_group].fetch(status.to_s, "badge-neutral")
+  end
+
+  def payment_status_badge(status)
+    BADGE_CLASSES[:payment].fetch(status.to_s, "badge-neutral")
+  end
+
+  # Linha de detalhe rótulo → valor (padrão das views de show/perfil).
+  # Uso: <%= detail_row "E-mail", user.email %>
+  # Uso: <%= detail_row "Nascimento", user.birth_date ? l(user.birth_date) : nil, border: false %>
+  def detail_row(label, value, border: true)
+    row_class = "flex justify-between py-3 text-sm"
+    row_class += " border-b border-vdc-default" if border
+
+    content_tag(:div, class: row_class) do
+      content_tag(:span, label, class: "text-vdc-foreground") +
+        content_tag(:span, value.presence || "—", class: "text-vdc-secondary")
+    end
   end
 
   def money(cents)

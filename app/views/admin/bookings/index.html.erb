@@ -23,17 +23,19 @@
 <% else %>
   <div class="flex flex-col gap-3">
     <% @booking_groups.each do |group| %>
-      <%= link_to admin_booking_path(group), class: "card-link" do %>
+      <%= link_to admin_booking_path(group),
+            class: "block bg-white rounded-2xl shadow-sm p-4 hover:shadow-md transition-all active:scale-[0.98]" do %>
         <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-mono text-vdc-secondary">#<%= group.id.split("-").first %></span>
           <span class="<%= booking_group_status_badge(group.status) %>">
             <%= t("booking_group.status.#{group.status}") %>
           </span>
         </div>
-        <p class="text-sm font-medium mb-1 text-vdc-foreground"><%= group.dentist.name %></p>
-        <div class="flex justify-between text-xs text-vdc-secondary">
-          <span><%= pluralize(group.bookings.size, "horário", "horários") %> · <%= l(group.created_at, format: :default) %></span>
-          <span class="font-medium text-vdc-primary">R$ <%= money(group.total_cents) %></span>
+        <p class="font-medium text-sm mb-3" style="color: #3E2723"><%= group.dentist.name %></p>
+        <div class="flex justify-between items-center border-t pt-3" style="border-color: #E0E0E0">
+          <span class="text-xs" style="color: #8D6E63">
+            <%= pluralize(group.bookings.size, "horário", "horários") %> · <%= l(group.created_at, format: :default) %>
+          </span>
+          <span class="text-sm font-medium" style="color: #5D4037">R$ <%= money(group.total_cents) %></span>
         </div>
       <% end %>
     <% end %>

@@ -60,6 +60,10 @@ pt-BR:
       locked: "Sua conta está bloqueada."
       invalid: "E-mail ou senha inválidos."
       not_found_in_database: "E-mail ou senha inválidos."
+  user:
+    role:
+      owner: "Proprietário"
+      dentist: "Dentista"
   booking_group:
     status:
       pending: "Aguardando pagamento"

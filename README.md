@@ -512,6 +512,8 @@ Se preferir não usar o Kamal, suba diretamente no servidor:
 
 ```bash
 docker build -t videira-dental .
+
+# Container Web (Rails)
 docker run -d \
   -p 3000:3000 \
   -e RAILS_MASTER_KEY=$(cat config/master.key) \
@@ -524,7 +526,20 @@ docker run -d \
   -e MERCADOPAGO_WEBHOOK_SECRET=... \
   --name videira-dental \
   videira-dental
+
+# Container Worker (Sidekiq) — OBRIGATÓRIO para expiração de pagamentos
+docker run -d \
+  -e RAILS_MASTER_KEY=$(cat config/master.key) \
+  -e DATABASE_URL=postgresql://usuario:senha@localhost:5432/videira_dental_production \
+  -e REDIS_URL=redis://localhost:6379/0 \
+  -e SECRET_KEY_BASE=$(bin/rails secret) \
+  -e MERCADOPAGO_ACCESS_TOKEN=... \
+  --name videira-dental-worker \
+  videira-dental \
+  bundle exec sidekiq
 ```
+
+> **Atenção:** o container Worker é obrigatório. Sem ele o `ExpirePaymentsJob` (cron a cada 5 min) nunca roda e as reservas ficam presas em "aguardando pagamento" indefinidamente, sem liberar os horários para novas reservas.
 
 **2. Configurar Nginx como proxy reverso:**
 
@@ -629,6 +644,31 @@ O `MERCADOPAGO_WEBHOOK_SECRET` no `.env` não bate com o configurado no painel d
 ### Assets não compilam / Tailwind não atualiza
 
 Certifique-se de subir o servidor com `bin/dev` (não `bin/rails server`). O `bin/dev` inicia o compilador do Tailwind em paralelo.
+
+### Reservas ficam presas em "aguardando pagamento" / horários não são liberados
+
+O Sidekiq (worker) não está rodando. O `ExpirePaymentsJob` é responsável por expirar pagamentos vencidos e liberar os horários — ele roda via cron a cada 5 minutos, mas só funciona com o Sidekiq ativo.
+
+**Em desenvolvimento:** suba sempre com `bin/dev` (não `bin/rails server`). O `Procfile.dev` inclui `worker: bundle exec sidekiq`.
+
+**Em produção (Kamal):** o `config/deploy.yml` deve ter o role `job` com `cmd: bundle exec sidekiq` (já incluído no exemplo desta documentação). Verifique se o container do worker está rodando:
+
+```bash
+kamal app details          # deve listar containers web e job
+kamal logs -r job          # logs do Sidekiq
+```
+
+**Em produção (Docker manual):** certifique-se de que o container `videira-dental-worker` está ativo (veja a seção de deploy manual acima).
+
+Para processar manualmente os pagamentos acumulados:
+
+```bash
+kamal app exec 'bin/rails runner "ExpirePaymentsJob.perform_now"'
+# ou, localmente:
+bundle exec rails runner "ExpirePaymentsJob.perform_now"
+```
+
+---
 
 ### `bin/rails db:seed` falha com e-mail duplicado
 

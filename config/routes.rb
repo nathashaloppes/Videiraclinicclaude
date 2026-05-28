@@ -60,13 +60,15 @@ Rails.application.routes.draw do
     root to: "dashboard#index"
 
     resources :clinics,        only: [:show, :update]
-    resources :users,          only: [:index, :show, :edit, :update, :destroy]
+    resources :users,          only: [:index, :show, :edit, :update, :destroy] do
+      collection { post :quick_create }
+    end
     resources :services,       except: [:show]
     resources :availabilities, except: [:show] do
       member { patch :toggle }
     end
     resources :discount_rules, except: [:show]
-    resources :bookings,       only: [:index, :show] do
+    resources :bookings,       only: [:index, :show, :create] do
       member { patch "cancelar", action: :cancel }
     end
     resources :payments, only: [:index, :show]

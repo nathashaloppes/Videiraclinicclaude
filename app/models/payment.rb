@@ -1,4 +1,7 @@
 class Payment < ApplicationRecord
+  include MoneyConvertible
+  money_field :amount
+
   has_paper_trail
 
   belongs_to :clinic
@@ -22,7 +25,4 @@ class Payment < ApplicationRecord
     expires_at.present? && expires_at < Time.current
   end
 
-  def amount
-    amount_cents / 100.0
-  end
 end

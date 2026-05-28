@@ -3,7 +3,7 @@
 <%= render "shared/back_button", path: reservas_path %>
 
 <div class="flex items-center justify-between mb-4">
-  <h1 class="text-2xl font-medium" style="color: #5D4037">Reserva</h1>
+  <h1 class="text-2xl font-medium text-vdc-primary">Reserva</h1>
   <span class="<%= booking_group_status_badge(@booking_group.status) %>">
     <%= t("booking_group.status.#{@booking_group.status}") %>
   </span>
@@ -13,10 +13,9 @@
   <% @booking_group.bookings.includes(:availability).each do |b| %>
     <div class="bg-white rounded-2xl shadow-sm p-4 flex justify-between items-start">
       <div>
-        <p class="font-medium text-sm" style="color: #3E2723"><%= b.availability.label %></p>
-        <p class="text-xs mt-1" style="color: #8D6E63">
-          <%= l(b.availability.date, format: :default) %> ·
-          <%= b.availability.starts_at.strftime("%H:%M") %>–<%= b.availability.ends_at.strftime("%H:%M") %>
+        <p class="font-medium text-sm text-vdc-foreground"><%= b.availability.label %></p>
+        <p class="text-xs mt-1 text-vdc-secondary">
+          <%= l(b.availability.date, format: :default) %> · <%= b.availability.time_range %>
         </p>
         <% if b.confirmed? && b.availability.cancellable? %>
           <%= button_to cancelar_reserva_path(b), method: :patch,
@@ -26,7 +25,7 @@
           <% end %>
         <% end %>
       </div>
-      <span class="text-sm font-medium" style="color: #5D4037">
+      <span class="text-sm font-medium text-vdc-primary">
         R$ <%= money(b.price_cents) %>
       </span>
     </div>
@@ -35,18 +34,18 @@
 
 <div class="bg-white rounded-3xl shadow-lg p-6 mb-4">
   <% if @booking_group.discount_cents > 0 %>
-    <div class="flex justify-between text-sm mb-2" style="color: #8D6E63">
+    <div class="flex justify-between text-sm mb-2 text-vdc-secondary">
       <span>Subtotal</span>
       <span>R$ <%= money(@booking_group.subtotal_cents) %></span>
     </div>
-    <div class="flex justify-between text-sm mb-2" style="color: #388E3C">
+    <div class="flex justify-between text-sm mb-2 text-vdc-success">
       <span>Desconto</span>
       <span>− R$ <%= money(@booking_group.discount_cents) %></span>
     </div>
   <% end %>
-  <div class="flex justify-between font-medium <%= 'border-t pt-3 mt-1' if @booking_group.discount_cents > 0 %>" style="border-color: #E0E0E0">
-    <span style="color: #3E2723">Total</span>
-    <span class="text-xl font-medium" style="color: #5D4037">
+  <div class="flex justify-between font-medium border-vdc-default <%= 'border-t pt-3 mt-1' if @booking_group.discount_cents > 0 %>">
+    <span class="text-vdc-foreground">Total</span>
+    <span class="text-xl font-medium text-vdc-primary">
       R$ <%= money(@booking_group.total_cents) %>
     </span>
   </div>

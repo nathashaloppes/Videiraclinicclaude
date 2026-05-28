@@ -20,7 +20,7 @@ class PaymentConfirmer < ApplicationService
     BookingMailer.confirmation(group).deliver_later
     success(group)
   rescue ActiveRecord::RecordInvalid => e
-    Rails.logger.error("[PaymentConfirmer] ref=#{@external_reference} error=#{e.message}")
+    log_error("ref=#{@external_reference} error=#{e.message}")
     failure(e.message)
   end
 
@@ -34,6 +34,6 @@ class PaymentConfirmer < ApplicationService
       locals:  { payment: payment }
     )
   rescue => e
-    Rails.logger.error("[PaymentConfirmer] broadcast failed: #{e.message}")
+    log_error("broadcast failed: #{e.message}")
   end
 end

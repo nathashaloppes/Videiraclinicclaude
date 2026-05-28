@@ -1,4 +1,7 @@
 class Booking < ApplicationRecord
+  include MoneyConvertible
+  money_field :price
+
   has_paper_trail
 
   belongs_to :clinic
@@ -14,7 +17,4 @@ class Booking < ApplicationRecord
     cancelled: "cancelled"
   }
 
-  def price
-    price_cents / 100.0
-  end
 end
