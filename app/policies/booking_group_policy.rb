@@ -1,6 +1,6 @@
 class BookingGroupPolicy < ApplicationPolicy
   def show?   = owner_or_dentist?
-  def create? = user.dentist?
+  def create? = user.owner? || user.dentist?
   def cancel? = owner_or_dentist? && record.pending?
 
   class Scope < ApplicationPolicy::Scope

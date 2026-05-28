@@ -1,4 +1,7 @@
 class Service < ApplicationRecord
+  include MoneyConvertible
+  money_field :price
+
   belongs_to :clinic
   has_many :availabilities, dependent: :restrict_with_error
 
@@ -8,8 +11,4 @@ class Service < ApplicationRecord
 
   scope :active, -> { where(active: true) }
 
-  def price
-    return nil if price_cents.nil?
-    price_cents / 100.0
-  end
 end

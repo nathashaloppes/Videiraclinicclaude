@@ -1,14 +1,14 @@
 <% content_for :title, "Usuários" %>
 
-<h1 class="text-2xl font-medium mb-4 text-vdc-primary">Usuários</h1>
+<h1 class="text-2xl font-medium mb-4" style="color: #5D4037">Usuários</h1>
 
-<div class="card-sm mb-4">
+<div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
   <%= form_with url: admin_users_path, method: :get, data: { turbo: false }, class: "flex gap-2" do |f| %>
     <%= f.search_field :q, value: params[:q], placeholder: "Buscar por nome...",
           class: "input-field flex-1" %>
     <%= f.submit "Buscar", class: "btn-primary cursor-pointer" %>
     <% if params[:q].present? %>
-      <%= link_to "✕", admin_users_path, class: "px-3 py-3 rounded-full text-sm text-vdc-secondary" %>
+      <%= link_to "✕", admin_users_path, class: "px-3 py-3 rounded-full text-sm", style: "color: #8D6E63" %>
     <% end %>
   <% end %>
 </div>
@@ -18,14 +18,14 @@
 <% else %>
   <div class="flex flex-col gap-3">
     <% @users.each do |u| %>
-      <div class="card-sm flex items-center gap-3">
+      <div class="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-3">
         <%= render "shared/avatar", user: u, size: "md" %>
         <div class="flex-1 min-w-0">
-          <p class="font-medium text-sm truncate text-vdc-foreground"><%= u.name %></p>
-          <p class="text-xs truncate text-vdc-secondary"><%= u.email %></p>
+          <p class="font-medium text-sm truncate" style="color: #3E2723"><%= u.name %></p>
+          <p class="text-xs truncate mb-1" style="color: #8D6E63"><%= u.email %></p>
           <span class="text-xs px-2 py-0.5 rounded-full"
-                style="<%= u.owner? ? 'background-color:#fef8e1;color:#5D4037' : 'background-color:#F5F5F5;color:#757575' %>">
-            <%= u.role %>
+                style="<%= u.owner? ? 'background-color: #fef8e1; color: #5D4037' : 'background-color: #F5F5F5; color: #757575' %>">
+            <%= t("user.role.#{u.role}") %>
           </span>
         </div>
         <div class="flex gap-2 shrink-0">

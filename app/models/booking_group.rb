@@ -20,19 +20,23 @@ class BookingGroup < ApplicationRecord
 
   def expire!
     return unless pending?
-    transaction do
-      update!(status: "expired")
-      bookings.each { |b| b.update!(status: "cancelled") }
-      bookings.each { |b| b.availability.update!(status: "available") }
-    end
+    release_bookings!(final_status: "expired")
   end
 
   def cancel!
     return if cancelled?
+    release_bookings!(final_status: "cancelled")
+  end
+
+  private
+
+  def release_bookings!(final_status:)
     transaction do
-      update!(status: "cancelled")
-      bookings.each { |b| b.update!(status: "cancelled") }
-      bookings.each { |b| b.availability.update!(status: "available") }
+      update!(status: final_status)
+      bookings.each do |b|
+        b.update!(status: "cancelled")
+        b.availability.update!(status: "available")
+      end
     end
   end
 end

@@ -1,4 +1,7 @@
 class Availability < ApplicationRecord
+  include MoneyConvertible
+  money_field :price
+
   has_paper_trail skip: [:status]
 
   belongs_to :clinic
@@ -37,8 +40,8 @@ class Availability < ApplicationRecord
     end
   end
 
-  def price
-    price_cents / 100.0
+  def time_range
+    "#{starts_at.strftime("%H:%M")}–#{ends_at.strftime("%H:%M")}"
   end
 
   def cancellable?

@@ -17,4 +17,12 @@ class ApplicationService
   def failure(error)
     Result.new(success: false, error: error)
   end
+
+  def log_error(message)
+    Rails.logger.error("[#{self.class}] #{message}")
+  end
+
+  def log_warn(message)
+    Rails.logger.warn("[#{self.class}] #{message}")
+  end
 end

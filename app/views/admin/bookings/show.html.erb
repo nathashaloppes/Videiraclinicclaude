@@ -24,9 +24,9 @@
         <p class="font-medium text-sm text-vdc-foreground"><%= b.availability.label %></p>
         <p class="text-xs mt-1 text-vdc-secondary">
           <%= l(b.availability.date, format: :default) %> ·
-          <%= b.availability.starts_at.strftime("%H:%M") %>–<%= b.availability.ends_at.strftime("%H:%M") %>
+          <%= b.availability.time_range %>
         </p>
-        <span class="text-xs" style="color: <%= b.confirmed? ? '#388E3C' : '#8D6E63' %>"><%= t("booking.status.#{b.status}", default: b.status.humanize) %></span>
+        <span class="text-xs <%= b.confirmed? ? 'text-vdc-success' : 'text-vdc-secondary' %>"><%= t("booking.status.#{b.status}", default: b.status.humanize) %></span>
       </div>
       <span class="text-sm font-medium text-vdc-primary">R$ <%= money(b.price_cents) %></span>
     </div>
@@ -39,12 +39,12 @@
     <span>R$ <%= money(@booking_group.subtotal_cents) %></span>
   </div>
   <% if @booking_group.discount_cents > 0 %>
-    <div class="flex justify-between" style="color: #388E3C">
+    <div class="flex justify-between text-vdc-success">
       <span>Desconto</span>
       <span>− R$ <%= money(@booking_group.discount_cents) %></span>
     </div>
   <% end %>
-  <div class="flex justify-between font-medium border-t pt-3 mt-1" style="border-color: #E0E0E0">
+  <div class="flex justify-between font-medium border-t pt-3 mt-1 border-vdc-default">
     <span class="text-vdc-foreground">Total</span>
     <span class="text-xl font-medium text-vdc-primary">R$ <%= money(@booking_group.total_cents) %></span>
   </div>
@@ -78,7 +78,7 @@
     <h2 class="font-medium mb-4 text-vdc-primary">Histórico</h2>
     <div class="flex flex-col gap-3">
       <% @versions.each do |v| %>
-        <div class="text-xs border-l-2 pl-3" style="border-color: #C9B8A8">
+        <div class="text-xs border-l-2 pl-3 border-vdc-accent">
           <p class="font-medium text-vdc-foreground"><%= v.event %></p>
           <p class="text-vdc-secondary"><%= l(v.created_at, format: :default) %></p>
           <p class="text-vdc-secondary">Por: <%= v.whodunnit&.truncate(20) || "sistema" %></p>
