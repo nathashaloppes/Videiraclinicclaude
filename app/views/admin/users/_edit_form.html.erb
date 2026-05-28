@@ -1,23 +1,11 @@
 <%# Locals: user (User) — formulário de edição reutilizado no show e no index %>
-<p class="text-xs mb-4 px-3 py-2 rounded-2xl" style="background-color:#FFF9C4;color:#8D6E63">
+<p class="text-xs mb-4 px-3 py-2 rounded-2xl bg-vdc-warning-light text-vdc-secondary">
   O e-mail não pode ser alterado por este painel.
 </p>
-<%= form_with model: [:admin, user], data: { turbo: false }, class: "flex flex-col gap-4" do |f| %>
-  <div>
-    <%= f.label :name, "Nome", class: "label" %>
-    <%= f.text_field :name, class: "input-field" %>
-  </div>
-  <div>
-    <%= f.label :phone, "Telefone", class: "label" %>
-    <%= f.telephone_field :phone, class: "input-field" %>
-  </div>
-  <div>
-    <%= f.label :cpf, "CPF (11 dígitos)", class: "label" %>
-    <%= f.text_field :cpf, class: "input-field" %>
-  </div>
-  <div>
-    <%= f.label :birth_date, "Data de nascimento", class: "label" %>
-    <%= f.date_field :birth_date, class: "input-field" %>
-  </div>
+<%= form_with model: [:admin, user], data: { turbo: false }, class: "flex flex-col gap-4", builder: VdcFormBuilder do |f| %>
+  <%= f.vdc_field :name,       "Nome" %>
+  <%= f.vdc_field :phone,      "Telefone",           :telephone_field %>
+  <%= f.vdc_field :cpf,        "CPF (11 dígitos)" %>
+  <%= f.vdc_field :birth_date, "Data de nascimento",  :date_field %>
   <%= render "shared/modal_actions", label: "Salvar" %>
 <% end %>

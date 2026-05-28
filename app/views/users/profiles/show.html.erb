@@ -1,53 +1,41 @@
 <% content_for :title, "Meu perfil" %>
 
 <div class="flex items-center justify-between mb-4">
-  <h1 class="text-2xl font-medium" style="color: #5D4037">Meu perfil</h1>
+  <h1 class="text-2xl font-medium text-vdc-primary">Meu perfil</h1>
   <%= link_to "Editar", edit_perfil_path, class: "btn-sm-outline" %>
 </div>
 
 <div class="bg-white rounded-3xl shadow-lg p-6 mb-4">
   <div class="flex flex-col items-center mb-6">
     <%= render "shared/avatar", user: current_user, size: "lg" %>
-    <h2 class="text-xl font-medium mt-3" style="color: #5D4037"><%= current_user.name %></h2>
-    <span class="text-xs px-3 py-1 rounded-full mt-1" style="background-color: #fef8e1; color: #8D6E63">
+    <h2 class="text-xl font-medium mt-3 text-vdc-primary"><%= current_user.name %></h2>
+    <span class="text-xs px-3 py-1 rounded-full mt-1 bg-vdc-background text-vdc-secondary">
       <%= current_user.role.capitalize %>
     </span>
   </div>
 
   <div class="flex flex-col gap-0">
-    <div class="flex justify-between py-3 border-b text-sm" style="border-color: #E0E0E0">
-      <span style="color: #3E2723">E-mail</span>
-      <span style="color: #8D6E63"><%= current_user.email %></span>
-    </div>
-    <div class="flex justify-between py-3 border-b text-sm" style="border-color: #E0E0E0">
-      <span style="color: #3E2723">Telefone</span>
-      <span style="color: #8D6E63"><%= current_user.phone.present? ? format_phone(current_user.phone) : "—" %></span>
-    </div>
-    <div class="flex justify-between py-3 border-b text-sm" style="border-color: #E0E0E0">
-      <span style="color: #3E2723">CPF</span>
-      <span style="color: #8D6E63"><%= current_user.cpf.present? ? format_cpf(current_user.cpf) : "—" %></span>
-    </div>
-    <div class="flex justify-between py-3 text-sm">
-      <span style="color: #3E2723">Nascimento</span>
-      <span style="color: #8D6E63"><%= current_user.birth_date ? l(current_user.birth_date, format: :default) : "—" %></span>
-    </div>
+    <%= detail_row "E-mail",     current_user.email %>
+    <%= detail_row "Telefone",   current_user.phone.present? ? format_phone(current_user.phone) : nil %>
+    <%= detail_row "CPF",        current_user.cpf.present? ? format_cpf(current_user.cpf) : nil %>
+    <%= detail_row "Nascimento", current_user.birth_date ? l(current_user.birth_date, format: :default) : nil, border: false %>
   </div>
 </div>
 
 <% credit_cents = Credit.balance_for(user: current_user, clinic: current_user.clinic) if current_user.clinic %>
 <% if credit_cents && credit_cents > 0 %>
-  <div class="bg-white rounded-2xl shadow-sm p-5 mb-4 border-l-4" style="border-color: #388E3C">
-    <p class="text-xs mb-1" style="color: #8D6E63">Saldo de créditos</p>
-    <p class="text-2xl font-medium" style="color: #388E3C">R$ <%= money(credit_cents) %></p>
-    <p class="text-xs mt-2" style="color: #8D6E63">Será aplicado automaticamente na próxima reserva.</p>
+  <div class="bg-white rounded-2xl shadow-sm p-5 mb-4 border-l-4 border-vdc-success">
+    <p class="text-xs mb-1 text-vdc-secondary">Saldo de créditos</p>
+    <p class="text-2xl font-medium text-vdc-success">R$ <%= money(credit_cents) %></p>
+    <p class="text-xs mt-2 text-vdc-secondary">Será aplicado automaticamente na próxima reserva.</p>
   </div>
 <% end %>
 
 <div class="bg-white rounded-2xl shadow-sm p-5">
-  <h2 class="font-medium mb-4" style="color: #5D4037">Minhas reservas</h2>
+  <h2 class="font-medium mb-4 text-vdc-primary">Minhas reservas</h2>
   <% recent = current_user.booking_groups.order(created_at: :desc).limit(5) %>
   <% if recent.empty? %>
-    <p class="text-sm mb-3" style="color: #8D6E63">Nenhuma reserva ainda.</p>
+    <p class="text-sm mb-3 text-vdc-secondary">Nenhuma reserva ainda.</p>
     <%= link_to "Reservar sala", root_path, class: "btn-sm-primary" %>
   <% else %>
     <div class="flex flex-col gap-3">
@@ -57,22 +45,19 @@
             <span class="<%= booking_group_status_badge(group.status) %>">
               <%= t("booking_group.status.#{group.status}") %>
             </span>
-            <span class="text-xs" style="color: #8D6E63"><%= l(group.created_at, format: :default) %></span>
+            <span class="text-xs text-vdc-secondary"><%= l(group.created_at, format: :default) %></span>
           </div>
           <%= link_to "Ver", reserva_path(group), class: "btn-xs-outline" %>
         </div>
       <% end %>
     </div>
     <div class="mt-4 text-center">
-      <%= link_to "Ver todas as reservas →", reservas_path,
-            class: "text-xs",
-            style: "color: #5D4037" %>
+      <%= link_to "Ver todas as reservas →", reservas_path, class: "text-xs text-vdc-primary" %>
     </div>
   <% end %>
 </div>
 
 <div class="mt-4">
   <%= button_to "Sair da conta", destroy_user_session_path, method: :delete,
-        class: "w-full py-3 rounded-full text-sm font-medium transition-all cursor-pointer",
-        style: "background-color: #fff; color: #8D6E63; border: 1px solid #E0E0E0" %>
+        class: "w-full py-3 rounded-full text-sm font-medium transition-all cursor-pointer bg-white text-vdc-secondary border border-vdc-default" %>
 </div>

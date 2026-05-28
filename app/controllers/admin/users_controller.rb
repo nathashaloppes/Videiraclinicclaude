@@ -25,6 +25,24 @@ class Admin::UsersController < Admin::BaseController
     end
   end
 
+  def quick_create
+    user = User.new(
+      name:     params[:name],
+      email:    params[:email],
+      clinic:   current_clinic,
+      role:     "dentist",
+      password: SecureRandom.hex(16)
+    )
+
+    if user.save
+      redirect_to admin_availabilities_path(date: params[:return_date]),
+        notice: "Dentista \"#{user.name}\" cadastrado. Selecione-o na lista para confirmar a reserva."
+    else
+      redirect_to admin_availabilities_path(date: params[:return_date]),
+        alert: user.errors.full_messages.to_sentence
+    end
+  end
+
   def destroy
     if @user == current_user
       redirect_to admin_users_path, alert: "Não é possível excluir seu próprio usuário."

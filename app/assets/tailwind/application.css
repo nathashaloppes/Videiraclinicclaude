@@ -46,15 +46,15 @@ dialog {
   border: none;
   border-radius: 1.5rem;
   padding: 0;
+  margin: 0;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   width: min(22rem, calc(100vw - 2rem));
-  max-height: 90dvh;   /* dvh avoids mobile browser chrome overlap */
+  max-height: 90dvh;
   overflow-y: auto;
-  /* Reliable viewport centering on all screen sizes and scroll positions */
   position: fixed;
-  inset: 0;
-  margin: auto;
-  height: fit-content;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 dialog::backdrop {
   background-color: rgba(0, 0, 0, 0.45);
@@ -94,14 +94,19 @@ input, select, textarea {
 }
 
 /* Helpers de paleta */
-.text-vdc-primary    { color: #5D4037; }
-.text-vdc-secondary  { color: #8D6E63; }
-.text-vdc-foreground { color: #3E2723; }
-.bg-vdc-background   { background-color: #fef8e1; }
-.bg-vdc-primary      { background-color: #5D4037; }
-.bg-vdc-accent       { background-color: #C9B8A8; }
-.bg-vdc-card         { background-color: #ffffff; }
-.border-vdc-default  { border-color: #E0E0E0; }
+.text-vdc-primary      { color: #5D4037; }
+.text-vdc-secondary    { color: #8D6E63; }
+.text-vdc-foreground   { color: #3E2723; }
+.text-vdc-success      { color: #388E3C; }
+.text-vdc-warning      { color: #F57F17; }
+.bg-vdc-background     { background-color: #fef8e1; }
+.bg-vdc-primary        { background-color: #5D4037; }
+.bg-vdc-accent         { background-color: #C9B8A8; }
+.bg-vdc-card           { background-color: #ffffff; }
+.bg-vdc-success-light  { background-color: #E8F5E9; }
+.bg-vdc-warning-light  { background-color: #FFF9C4; }
+.border-vdc-default    { border-color: #E0E0E0; }
+.border-vdc-accent     { border-color: #C9B8A8; }
 
 /* Componentes reutilizáveis */
 @layer components {

@@ -1,4 +1,7 @@
 class Credit < ApplicationRecord
+  include MoneyConvertible
+  money_field :amount
+
   has_paper_trail
 
   belongs_to :user
@@ -19,7 +22,4 @@ class Credit < ApplicationRecord
     used_at.nil?
   end
 
-  def amount
-    amount_cents / 100.0
-  end
 end

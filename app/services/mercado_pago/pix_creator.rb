@@ -34,11 +34,11 @@ module MercadoPago
           expires_at:  expires_at
         })
       else
-        Rails.logger.error("[MercadoPago::PixCreator] status=#{resp[:status]} body=#{resp[:response].inspect}")
+        log_error("status=#{resp[:status]} body=#{resp[:response].inspect}")
         failure("Serviço de pagamento indisponível. Tente novamente.")
       end
     rescue => e
-      Rails.logger.error("[MercadoPago::PixCreator] #{e.class}: #{e.message}")
+      log_error("#{e.class}: #{e.message}")
       failure("Erro ao conectar ao serviço de pagamento.")
     end
 

@@ -2,20 +2,20 @@
 
 <%= render "shared/back_button", path: root_path %>
 
-<h1 class="text-2xl font-medium mb-6" style="color: #5D4037">Minhas reservas</h1>
+<h1 class="text-2xl font-medium mb-6 text-vdc-primary">Minhas reservas</h1>
 
 <% if @booking_groups.empty? %>
   <div class="text-center py-12">
-    <p class="text-sm mb-6" style="color: #8D6E63">Você ainda não tem reservas.</p>
+    <p class="text-sm mb-6 text-vdc-secondary">Você ainda não tem reservas.</p>
     <%= link_to "Reservar agora →", root_path, class: "btn-cta" %>
   </div>
 <% else %>
   <div class="flex flex-col gap-3 mb-4">
     <% @booking_groups.each do |group| %>
-      <%= link_to reserva_path(group), class: "card-link" do %>
+      <%= link_to reserva_path(group),
+            class: "block bg-white rounded-2xl shadow-sm p-4 hover:shadow-md transition-all active:scale-[0.98]" do %>
 
         <div class="flex items-center justify-between mb-3">
-          <span class="text-xs font-mono" style="color: #8D6E63">#<%= group.id.split("-").first %></span>
           <span class="<%= booking_group_status_badge(group.status) %>">
             <%= t("booking_group.status.#{group.status}") %>
           </span>
@@ -23,21 +23,20 @@
 
         <div class="flex flex-col gap-1 mb-3">
           <% group.bookings.each do |b| %>
-            <p class="font-medium text-sm" style="color: #3E2723">
+            <p class="font-medium text-sm text-vdc-foreground">
               <%= b.availability.label %>
             </p>
-            <p class="text-xs" style="color: #8D6E63">
-              <%= l(b.availability.date, format: :default) %> ·
-              <%= b.availability.starts_at.strftime("%H:%M") %>–<%= b.availability.ends_at.strftime("%H:%M") %>
+            <p class="text-xs text-vdc-secondary">
+              <%= l(b.availability.date, format: :default) %> · <%= b.availability.time_range %>
             </p>
           <% end %>
         </div>
 
-        <div class="flex justify-between items-center border-t pt-3" style="border-color: #E0E0E0">
-          <span class="text-xs" style="color: #8D6E63">
+        <div class="flex justify-between items-center border-t pt-3 border-vdc-default">
+          <span class="text-xs text-vdc-secondary">
             <%= pluralize(group.bookings.size, "horário", "horários") %>
           </span>
-          <span class="text-sm font-medium" style="color: #5D4037">
+          <span class="text-sm font-medium text-vdc-primary">
             R$ <%= money(group.total_cents) %>
           </span>
         </div>

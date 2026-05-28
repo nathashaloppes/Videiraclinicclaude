@@ -6,6 +6,7 @@ class Admin::AvailabilitiesController < Admin::BaseController
     @availabilities = current_clinic.availabilities
       .where(date: @date)
       .order(:starts_at)
+    @dentists = User.dentists.where(clinic: current_clinic).order(:name)
   rescue Date::Error
     redirect_to admin_availabilities_path, alert: "Data inválida."
   end
@@ -69,15 +70,7 @@ class Admin::AvailabilitiesController < Admin::BaseController
 
   def availability_params
     p = params.require(:availability).permit(:date, :starts_at, :ends_at, :status, :price)
-    if p[:price].present?
-      p[:price_cents] = (p.delete(:price).to_s.gsub(",", ".").to_f * 100).round
-    else
-      p.delete(:price)
-    end
+    p[:price_cents] = price_to_cents(p.delete(:price))
     p
-  end
-
-  def current_clinic
-    current_user.clinic
   end
 end
