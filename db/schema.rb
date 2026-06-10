@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_05_25_164324) do
+ActiveRecord::Schema[7.2].define(version: 2026_06_09_213011) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -144,14 +144,13 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_25_164324) do
     t.uuid "booking_group_id", null: false
     t.integer "amount_cents", null: false
     t.string "status", default: "pending", null: false
-    t.string "gateway", default: "mercadopago", null: false
+    t.string "gateway", default: "infinitepay", null: false
     t.string "gateway_id"
-    t.text "pix_qr_code"
-    t.string "pix_qr_url"
     t.datetime "expires_at"
     t.datetime "paid_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "checkout_url"
     t.index ["booking_group_id"], name: "index_payments_on_booking_group_id", unique: true
     t.index ["clinic_id"], name: "index_payments_on_clinic_id"
     t.index ["gateway_id"], name: "index_payments_on_gateway_id", unique: true, where: "(gateway_id IS NOT NULL)"

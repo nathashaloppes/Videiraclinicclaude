@@ -61,7 +61,7 @@ class BookingGroupCreator < ApplicationService
       payment = if amount_due.zero?
         confirm_fully_credit_paid(group, credits_applied)
       else
-        create_pix_payment(group, amount_due)
+        create_infinitepay_payment(group, amount_due)
       end
     end
 
@@ -109,19 +109,17 @@ class BookingGroupCreator < ApplicationService
     )
   end
 
-  def create_pix_payment(group, amount_due)
-    pix = MercadoPago::PixCreator.call(group, amount_cents: amount_due)
-    raise PaymentError, pix.error unless pix.success?
+  def create_infinitepay_payment(group, amount_due)
+    result = InfinitePay::CheckoutCreator.call(booking_group: group, amount_cents: amount_due)
+    raise PaymentError, result.error unless result.success?
 
     Payment.create!(
       clinic:        @clinic,
       booking_group: group,
-      gateway:       "mercadopago",
-      gateway_id:    pix.value[:gateway_id],
-      pix_qr_code:   pix.value[:pix_qr_code],
-      pix_qr_url:    pix.value[:pix_qr_url],
+      gateway:       "infinitepay",
+      checkout_url:  result.value[:checkout_url],
       amount_cents:  amount_due,
-      expires_at:    pix.value[:expires_at],
+      expires_at:    result.value[:expires_at],
       status:        "pending"
     )
   end

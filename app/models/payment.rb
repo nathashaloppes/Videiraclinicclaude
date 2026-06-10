@@ -9,6 +9,7 @@ class Payment < ApplicationRecord
 
   validates :amount_cents, presence: true, numericality: { greater_than: 0 }
   validates :gateway,      presence: true
+  validates :checkout_url, presence: true, if: -> { gateway == "infinitepay" && pending? }
 
   enum :status, {
     pending:   "pending",

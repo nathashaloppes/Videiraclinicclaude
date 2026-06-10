@@ -22,6 +22,8 @@ Rails.application.routes.draw do
   resource :perfil, controller: "users/profiles",
     path_names: { edit: "editar" }
 
+  resource :carteira, only: [:show], controller: "users/wallets"
+
   # ---- Agendamento ------------------------------------------
   scope module: "scheduling" do
     resource :carrinho, only: [:show, :destroy], path: "carrinho",
@@ -51,8 +53,11 @@ Rails.application.routes.draw do
       end
     end
 
-    post "webhooks/mercadopago", to: "webhooks#mercadopago",
-      as: :mercadopago_webhook
+    # Retorno após pagamento no InfinitePay
+    get "pagamento/retorno", to: "payments#return", as: :retorno_pagamento
+
+    post "webhooks/infinitepay", to: "webhooks#infinitepay",
+      as: :infinitepay_webhook
   end
 
   # ---- Painel Admin -----------------------------------------
@@ -60,8 +65,11 @@ Rails.application.routes.draw do
     root to: "dashboard#index"
 
     resources :clinics,        only: [:show, :update]
-    resources :users,          only: [:index, :show, :edit, :update, :destroy] do
-      collection { post :quick_create }
+    resources :users, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+      member do
+        post   :add_credit
+        delete :remove_credit
+      end
     end
     resources :services,       except: [:show]
     resources :availabilities, except: [:show] do

@@ -1,36 +1,28 @@
 class Payments::WebhooksController < ActionController::Base
-  # Sem CSRF, sem autenticação — validação é feita via HMAC
   protect_from_forgery with: :null_session
 
-  def mercadopago
+  def infinitepay
     payload = JSON.parse(request.body.read)
 
-    unless MercadoPago::WebhookValidator.call(request, payload)
-      Rails.logger.warn("[Webhook] Assinatura inválida ip=#{request.remote_ip}")
-      return head :unauthorized
+    # InfinitePay não documenta assinatura HMAC — validamos pelo order_nsu existir no banco.
+    # NOTA: confirmar com suporte InfinitePay se há header de assinatura a validar.
+    order_nsu = payload["order_nsu"].to_s
+    unless BookingGroup.exists?(id: order_nsu)
+      Rails.logger.warn("[Webhook InfinitePay] order_nsu desconhecido: #{order_nsu}")
+      return head :ok
     end
 
-    event_type = payload["type"]
-    action     = payload["action"]
-
-    # Só processa notificações de pagamento aprovado
-    if event_type == "payment" && action == "payment.updated"
-      provider_id = payload.dig("data", "id").to_s
-
-      finder = MercadoPago::PaymentFinder.call(provider_id)
-      mp_data = finder.value if finder.success?
-
-      if mp_data && mp_data["status"] == "approved"
-        PaymentConfirmer.call(external_reference: mp_data["external_reference"])
-      end
+    # Só processa Pix aprovado (pagamentos via cartão são ignorados — app é Pix only)
+    if payload["capture_method"] == "pix" && payload["paid_amount"].to_i > 0
+      PaymentConfirmer.call_from_webhook(payload)
     end
 
     head :ok
   rescue JSON::ParserError
-    Rails.logger.error("[Webhook] JSON inválido")
+    Rails.logger.error("[Webhook InfinitePay] JSON inválido")
     head :bad_request
   rescue => e
-    Rails.logger.error("[Webhook] #{e.class}: #{e.message}")
-    head :ok  # sempre 200 para o MP não retentar em erro interno
+    Rails.logger.error("[Webhook InfinitePay] #{e.class}: #{e.message}")
+    head :ok  # sempre 200 para InfinitePay não criar loop de retentativas
   end
 end

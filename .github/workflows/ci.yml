@@ -81,8 +81,8 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/videira_dental_test
       REDIS_URL: redis://localhost:6379/0
       SECRET_KEY_BASE: test-secret-key-base-for-ci-only
-      MERCADOPAGO_ACCESS_TOKEN: TEST-000000000000000-000000-00000000000000000000000000000000-000000000
-      MERCADOPAGO_WEBHOOK_SECRET: mock-webhook-secret-replace-me
+      INFINITEPAY_HANDLE: mock-handle
+      APP_HOST: localhost:3000
       GOOGLE_CLIENT_ID: mock-google-client-id
       GOOGLE_CLIENT_SECRET: mock-google-client-secret
 

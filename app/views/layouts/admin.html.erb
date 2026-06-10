@@ -16,18 +16,15 @@
       <div class="max-w-md mx-auto px-4 py-6">
 
         <div class="flex justify-center mb-6 relative">
-          <%= link_to root_path do %>
+          <%= link_to admin_root_path do %>
             <%= render "shared/logo", size: "lg" %>
           <% end %>
 
-          <div class="absolute right-0 top-0 flex items-center gap-2">
-            <%= link_to perfil_path, class: "block" do %>
-              <%= render "shared/avatar", user: current_user, size: "sm" %>
-            <% end %>
+          <div class="absolute right-0 top-0">
             <button type="button" onclick="<%= open_modal('logout-modal') %>"
-                    class="p-2 hover:bg-white/50 rounded-full cursor-pointer"
+                    class="p-2 cursor-pointer rounded-full hover:bg-white/50"
                     title="Sair">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" style="color: #5D4037"
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" style="color: #5D4037"
                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round"
                       d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
@@ -36,11 +33,7 @@
           </div>
         </div>
 
-        <%# Modal Logout — renderizado fora do container centralizado para não herdar z-index %>
-        <%= render layout: "shared/modal", locals: { id: "logout-modal", title: "Sair da conta?" } do %>
-          <p class="text-center text-sm mb-5" style="color:#8D6E63">
-            Tem certeza que deseja encerrar a sessão?
-          </p>
+        <%= render layout: "shared/modal", locals: { id: "logout-modal", title: "Tem certeza que deseja sair?" } do %>
           <div class="flex gap-3">
             <button type="button" onclick="this.closest('dialog').close()"
                     class="btn-outline flex-1 cursor-pointer">
@@ -56,31 +49,18 @@
         <%= render "shared/flash" %>
 
         <div class="grid grid-cols-2 gap-3 mb-8">
-          <% nav_items = [
-               { label: "Reservas",   path: admin_bookings_path },
-               { label: "Clientes",   path: admin_users_path },
-               { label: "Turnos",     path: admin_availabilities_path },
-               { label: "Pagamentos", path: admin_payments_path },
-               { label: "Descontos",  path: admin_discount_rules_path },
-               { label: "Créditos",   path: admin_credits_path },
-             ] %>
-          <% nav_items.each do |item| %>
+          <% [
+               { label: "Reservas",    path: admin_bookings_path },
+               { label: "Clientes",    path: admin_users_path },
+               { label: "Turnos",      path: admin_availabilities_path },
+               { label: "Videira Shop", path: "#" },
+             ].each do |item| %>
             <% active = current_page?(item[:path]) %>
             <%= link_to item[:path],
                   class: "rounded-2xl p-5 shadow-sm hover:shadow-md transition-all active:scale-[0.98] flex items-center justify-center",
                   style: "background-color: #{active ? '#C9B8A8' : '#ffffff'}" do %>
               <span class="text-sm font-medium uppercase tracking-wide" style="color: #5D4037">
                 <%= item[:label] %>
-              </span>
-            <% end %>
-          <% end %>
-          <% if current_user.clinic %>
-            <% active = request.path.start_with?("/admin/clinics") %>
-            <%= link_to admin_clinic_path(current_user.clinic),
-                  class: "rounded-2xl p-5 shadow-sm hover:shadow-md transition-all active:scale-[0.98] flex items-center justify-center",
-                  style: "background-color: #{active ? '#C9B8A8' : '#ffffff'}" do %>
-              <span class="text-sm font-medium uppercase tracking-wide" style="color: #5D4037">
-                Clínica
               </span>
             <% end %>
           <% end %>
