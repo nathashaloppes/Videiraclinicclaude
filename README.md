@@ -12,11 +12,19 @@ Sistema SaaS para aluguel de salas odontológicas. Dentistas buscam horários di
 - [Stack](#stack)
 - [Rodando localmente](#rodando-localmente)
 - [Configurando o Google OAuth 2.0](#configurando-o-google-oauth-20)
-- [Configurando o MercadoPago Sandbox](#configurando-o-mercadopago-sandbox)
+- [Integração com Google Agenda (Owner)](#integração-com-google-agenda-owner)
+- [Configurando o InfinitePay](#configurando-o-infinitepay)
+- [E-mails transacionais (SMTP)](#e-mails-transacionais-smtp)
 - [Testes](#testes)
 - [CI — GitHub Actions](#ci--github-actions)
-- [Configurando o servidor VPS do zero](#configurando-o-servidor-vps-do-zero)
 - [Deploy em produção](#deploy-em-produção)
+  - [Visão geral do plano](#visão-geral-do-plano)
+  - [1. Preparar o servidor VPS](#1-preparar-o-servidor-vps)
+  - [2. Preparar a máquina local](#2-preparar-a-máquina-local)
+  - [3. Preencher `config/deploy.yml`](#3-preencher-configdeployyml)
+  - [4. Preencher `.kamal/secrets`](#4-preencher-kamalsecrets)
+  - [5. Primeiro deploy](#5-primeiro-deploy)
+  - [6. Deploys seguintes e operação](#6-deploys-seguintes-e-operação)
 - [Arquitetura resumida](#arquitetura-resumida)
 - [Troubleshooting](#troubleshooting)
 - [Variáveis de ambiente completas](#variáveis-de-ambiente-completas)
@@ -25,10 +33,13 @@ Sistema SaaS para aluguel de salas odontológicas. Dentistas buscam horários di
 
 ## Funcionalidades
 
-- **Agendamento** — listagem de serviços e horários, carrinho por sessão, checkout com cálculo de desconto automático por volume
-- **Pagamento Pix** — integração com MercadoPago, QR Code em tempo real, expiração automática via Sidekiq
-- **Confirmação em tempo real** — webhook HMAC-SHA256 + Turbo Streams atualiza a tela do dentista sem refresh
-- **Painel Admin** — gestão de clínica, dentistas, serviços, horários, regras de desconto, reservas e pagamentos
+- **Agendamento** — listagem de horários por dia, carrinho por sessão, checkout com desconto automático por volume de slots
+- **Pagamento Pix** — integração com o **InfinitePay Checkout**; o dentista é redirecionado ao checkout hospedado e paga via Pix
+- **Confirmação em tempo real** — webhook do InfinitePay + Turbo Streams confirmam a reserva e atualizam a tela sem refresh
+- **Expiração automática** — `ExpirePaymentsJob` (Sidekiq + sidekiq-cron, a cada 5 min) libera slots de pagamentos não concluídos
+- **Créditos / carteira** — cancelamento de reserva paga gera crédito em conta (sem estorno), abatido automaticamente em compras futuras
+- **Painel Admin** — gestão de clínica, dentistas, serviços, horários, regras de desconto, reservas, pagamentos e créditos
+- **E-mails transacionais** — confirmação, cancelamento e emissão de crédito via `BookingMailer`
 - **Autenticação** — Devise + login social Google OAuth 2.0
 - **Auditoria** — histórico completo de alterações com PaperTrail
 
@@ -41,12 +52,17 @@ Sistema SaaS para aluguel de salas odontológicas. Dentistas buscam horários di
 | Framework | Ruby on Rails 7.2 |
 | Banco de dados | PostgreSQL (UUIDs via pgcrypto) |
 | Frontend | Hotwire (Turbo + Stimulus) + Tailwind CSS |
-| Background jobs | Sidekiq + Redis + sidekiq-cron |
-| Pagamentos | MercadoPago SDK (Pix) |
+| JS | Importmap (sem Node/bundler) |
+| Background jobs | Sidekiq 7 + Redis + sidekiq-cron |
+| Realtime | Turbo Streams via Action Cable (Redis) |
+| Pagamentos | InfinitePay Checkout API (Pix) |
 | Auth | Devise + OmniAuth Google OAuth 2.0 |
 | Autorização | Pundit |
 | Auditoria | PaperTrail |
-| Testes | RSpec + FactoryBot + Shoulda-Matchers + WebMock |
+| Paginação | Pagy |
+| Testes | RSpec + FactoryBot + Faker + Shoulda-Matchers + WebMock + Capybara |
+| Qualidade | RuboCop (omakase) + Brakeman |
+| Deploy | Kamal 2 + Docker |
 
 ---
 
@@ -54,10 +70,11 @@ Sistema SaaS para aluguel de salas odontológicas. Dentistas buscam horários di
 
 ### Pré-requisitos
 
-- Ruby 3.2.3
-- PostgreSQL
-- Redis
-- Node.js (para compilação do Tailwind)
+- **Ruby 3.2.3** (ver `.ruby-version`)
+- **PostgreSQL** (com seu usuário do sistema como superuser — ver passo 3)
+- **Redis** (necessário para Sidekiq e Turbo Streams)
+
+> O Tailwind roda via binário standalone (`tailwindcss-rails`) e o JS via Importmap — **não é necessário Node.js**.
 
 ### 1. Instalar dependências
 
@@ -67,25 +84,27 @@ bundle install
 
 ### 2. Configurar variáveis de ambiente
 
-Copie o arquivo de exemplo e preencha os valores:
-
 ```bash
 cp .env.example .env
 ```
 
-As variáveis obrigatórias para desenvolvimento são:
+Para subir a aplicação localmente, as variáveis mínimas são:
 
 | Variável | Descrição |
 |---|---|
 | `REDIS_URL` | URL do Redis (padrão: `redis://localhost:6379/0`) |
-| `SECRET_KEY_BASE` | Gerado automaticamente no `.env.example` |
-| `GOOGLE_CLIENT_ID` | Credencial OAuth no [Google Cloud Console](https://console.cloud.google.com) |
-| `GOOGLE_CLIENT_SECRET` | Credencial OAuth no Google Cloud Console |
-| `MERCADOPAGO_ACCESS_TOKEN` | Token Sandbox no [MercadoPago](https://www.mercadopago.com.br/developers) |
-| `MERCADOPAGO_WEBHOOK_SECRET` | Secret de validação de webhook |
+| `SECRET_KEY_BASE` | Gere com `bin/rails secret` e cole no `.env` |
 | `OWNER_PASSWORD` | Senha do usuário owner criado pelo seed |
 
-> Enquanto não tiver as credenciais reais, o login Google mostrará erro e o Pix usará dados mockados (o sandbox é detectado automaticamente pelo prefixo `TEST-` no token).
+Variáveis opcionais em dev (necessárias para os fluxos completos):
+
+| Variável | Quando precisa |
+|---|---|
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Para o login com Google funcionar |
+| `INFINITEPAY_HANDLE` | Para o fluxo de pagamento Pix funcionar |
+| `APP_HOST` | Domínio público (ex: `localhost:3000`, ou a URL do ngrok ao testar webhook) |
+
+> Sem `INFINITEPAY_HANDLE` você consegue navegar e testar todo o app, exceto a criação do checkout de pagamento. Sem as credenciais do Google, o botão "Entrar com Google" exibirá erro.
 
 ### 3. Criar e migrar o banco de dados
 
@@ -96,7 +115,7 @@ sudo -u postgres createuser $USER --superuser  # execute apenas uma vez
 bin/rails db:create db:migrate db:seed
 ```
 
-O seed cria a clínica e um usuário owner com o e-mail `owner@videiradental.com.br` e a senha definida em `OWNER_PASSWORD`.
+O seed cria a clínica, um usuário **owner** (`owner@videiradental.com.br` com a senha de `OWNER_PASSWORD`), salas, turnos de exemplo e regras de desconto.
 
 ### 4. Subir os serviços
 
@@ -104,15 +123,13 @@ O seed cria a clínica e um usuário owner com o e-mail `owner@videiradental.com
 bin/dev
 ```
 
-Isso inicia em paralelo o servidor Rails, o compilador Tailwind e o Sidekiq (via `Procfile.dev`).
+O `bin/dev` (via `Procfile.dev` + foreman) inicia em paralelo:
 
-Ou, se preferir terminais separados:
+- **web** — servidor Rails
+- **css** — compilador Tailwind em watch
+- **worker** — Sidekiq (jobs e expiração de pagamentos)
 
-```bash
-bin/rails server     # Terminal 1
-redis-server         # Terminal 2
-bundle exec sidekiq  # Terminal 3
-```
+> Requer Redis rodando. Se preferir terminais separados, rode `bin/rails server`, `redis-server` e `bundle exec sidekiq -C config/sidekiq.yml` em janelas diferentes.
 
 ### 5. Acessar
 
@@ -145,7 +162,6 @@ bundle exec sidekiq  # Terminal 3
    - User Type: **External**
    - App name: `Videira Dental`
    - Support email: seu e-mail
-   - Salve e volte para criar as credenciais
 4. Application type: **Web application**
 5. Em **Authorized redirect URIs**, adicione:
    ```
@@ -160,11 +176,11 @@ GOOGLE_CLIENT_ID=SEU_CLIENT_ID.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=SEU_CLIENT_SECRET
 ```
 
-Reinicie o servidor e o botão **Entrar com Google** estará funcional. Na primeira vez, o Google pode exibir um aviso de app não verificado — clique em **Advanced → Go to Videira Dental (unsafe)**. Isso é esperado em desenvolvimento.
+Reinicie o servidor. Na primeira vez, o Google pode exibir aviso de app não verificado — clique em **Advanced → Go to Videira Dental (unsafe)**. É esperado em desenvolvimento.
 
 ### Para produção
 
-Adicione o domínio real nas credenciais do Google Cloud:
+Adicione o domínio real nas credenciais:
 
 - **Authorized JavaScript origins:** `https://seudominio.com.br`
 - **Authorized redirect URIs:** `https://seudominio.com.br/auth/google_oauth2/callback`
@@ -173,58 +189,130 @@ E altere o **Publishing status** da consent screen de **Testing** para **In prod
 
 ---
 
-## Configurando o MercadoPago Sandbox
+## Integração com Google Agenda (Owner)
 
-### 1. Criar a aplicação no painel de desenvolvedores
+> ⚠️ **Status: planejado — ainda não implementado no código.** Esta seção documenta a configuração e o desenho da integração. Os passos de Google Cloud abaixo já podem ser feitos; a parte de código (serviço de sincronização) precisa ser construída antes de funcionar.
 
-1. Acesse [mercadopago.com.br/developers](https://www.mercadopago.com.br/developers)
-2. Faça login com sua conta MercadoPago (ou crie uma)
-3. Vá em **Suas integrações → Criar aplicação**
-4. Preencha:
-   - Nome: `Videira Dental`
-   - Modelo de pagamento: **Pagamentos online**
-   - Produto: **Checkout API**
-5. Clique em **Criar aplicação**
+**Objetivo:** quando uma reserva é **confirmada** (pagamento aprovado), criar automaticamente um evento na **Google Agenda da owner** na **data e horário** do turno alugado, com o nome da dentista e a sala. Cancelamentos removem o evento correspondente.
 
-### 2. Obter as credenciais Sandbox
+### Como vai funcionar
 
-Na sua aplicação, vá em **Credenciais → Credenciais de teste**:
+A owner autoriza o app a escrever na agenda dela **uma vez** (consentimento OAuth com acesso offline). O app guarda o *refresh token* da owner e, a cada confirmação, insere o evento via Google Calendar API. Reusa o mesmo `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` do login.
 
-- `MERCADOPAGO_ACCESS_TOKEN` → campo **Access Token** (começa com `TEST-`)
-- `MERCADOPAGO_PUBLIC_KEY` → campo **Public Key** (começa com `TEST-`)
+```
+Pagamento confirmado → PaymentConfirmer
+        │
+        ▼
+GoogleCalendar::EventCreator  (usa o refresh token da owner)
+        │
+        ▼
+Evento na agenda da owner: "Aluguel — Dra. Fulana"
+  início = availability.date + starts_at
+  fim    = availability.date + ends_at
+```
 
-### 3. Configurar o Webhook
+### 1. Habilitar a Google Calendar API
 
-O MercadoPago exige uma URL HTTPS pública para enviar notificações. Em desenvolvimento, use o [ngrok](https://ngrok.com/download) para expor o localhost:
+No [Google Cloud Console](https://console.cloud.google.com) → **APIs & Services → Library**, busque **Google Calendar API** e clique em **Enable** (no mesmo projeto do OAuth).
+
+### 2. Adicionar o escopo de calendário
+
+Na **OAuth consent screen → Scopes**, adicione:
+
+```
+https://www.googleapis.com/auth/calendar.events
+```
+
+E garanta, na configuração do OmniAuth, o acesso offline (para receber o *refresh token*):
+
+```ruby
+# config/initializers/devise.rb (ou omniauth) — A IMPLEMENTAR
+config.omniauth :google_oauth2, ENV["GOOGLE_CLIENT_ID"], ENV["GOOGLE_CLIENT_SECRET"],
+  scope: "email,profile,https://www.googleapis.com/auth/calendar.events",
+  access_type: "offline",
+  prompt: "consent"
+```
+
+### 3. Variáveis de ambiente
+
+```bash
+# Agenda de destino da owner — use "primary" para a agenda principal
+# ou o ID de uma agenda dedicada (ex.: reservas@videiradental.com.br)
+GOOGLE_CALENDAR_ID=primary
+```
+
+> Reusa `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` já existentes. O *refresh token* da owner é guardado no banco (campo a criar em `users`), **não** em variável de ambiente.
+
+### 4. O que falta no código (resumo da implementação)
+
+- Migration: `users.google_refresh_token` (e opcionalmente `google_calendar_event_id` em `bookings`)
+- Capturar e salvar o *refresh token* no `Auth::OmniauthCallbacksController` quando a owner autoriza
+- Service `GoogleCalendar::EventCreator` / `EventRemover` (gem `google-apis-calendar_v3`)
+- Hook em `PaymentConfirmer` (criar evento) e `BookingCanceller` (remover evento)
+
+---
+
+## Configurando o InfinitePay
+
+Documentação oficial: [infinitepay.io/checkout-documentacao](https://www.infinitepay.io/checkout-documentacao).
+Notas de integração do projeto: [`docs/02_arquitetura/INFINITEPAY.md`](docs/02_arquitetura/INFINITEPAY.md).
+
+O InfinitePay funciona como **checkout hospedado**: o app cria um link de pagamento e **redireciona** o dentista para a página do InfinitePay, onde ele paga via Pix. Não há QR Code inline nem countdown na tela do app.
+
+### 1. Obter o InfiniteTag (handle)
+
+1. Acesse [app.infinitepay.io](https://app.infinitepay.io) e faça login
+2. Vá em **Perfil** e localize seu **InfiniteTag** (começa com `$`)
+3. Use o valor **sem o símbolo `$`** como `INFINITEPAY_HANDLE`
+
+### 2. Definir `APP_HOST` (webhook + redirect)
+
+O webhook e a URL de retorno são montados dinamicamente a partir de `APP_HOST`. Em desenvolvimento, para receber o webhook de confirmação, exponha o localhost com [ngrok](https://ngrok.com/download):
 
 ```bash
 ngrok http 3000
-# Exemplo de saída: https://abc123.ngrok.io
+# saída de exemplo: https://abc123.ngrok.io
 ```
-
-No painel do MercadoPago, vá em **Webhooks → Configurar notificações**:
-
-- URL: `https://abc123.ngrok.io/webhooks/mercadopago`
-- Eventos: marque **Pagamentos**
-- Salve — o `MERCADOPAGO_WEBHOOK_SECRET` é exibido nessa tela
-
-### 4. Atualizar o `.env`
 
 ```bash
-MERCADOPAGO_ACCESS_TOKEN=TEST-xxxx-seu-access-token
-MERCADOPAGO_PUBLIC_KEY=TEST-xxxx-sua-public-key
-MERCADOPAGO_WEBHOOK_SECRET=seu-webhook-secret
+# .env
+INFINITEPAY_HANDLE=seu-handle-sem-cifrao
+APP_HOST=abc123.ngrok.io   # ou localhost:3000 se não for testar o webhook
 ```
 
-> O token começando com `TEST-` é detectado automaticamente pelo sistema como sandbox. Nesse modo, o QR Code Pix gerado é fictício e nenhuma cobrança real é realizada.
+O sistema usará automaticamente:
+- Webhook: `https://<APP_HOST>/webhooks/infinitepay`
+- Retorno: `https://<APP_HOST>/pagamento/retorno`
 
-### Simulando um pagamento aprovado
+### Fluxo de pagamento
 
-Após gerar um Pix na aplicação, você pode simular a aprovação pelo painel do MercadoPago em **Atividade → pagamento em teste → Aprovar**. O webhook será disparado e a tela do dentista atualizará em tempo real via Turbo Stream.
+1. Dentista confirma a reserva → o app cria o link no InfinitePay (`InfinitePay::CheckoutCreator`)
+2. Dentista clica em **Pagar via Pix** e vai ao checkout do InfinitePay
+3. Pagamento via **Pix** é realizado
+4. InfinitePay envia o webhook → `PaymentConfirmer` confirma a reserva e dispara Turbo Stream
+5. Dentista é redirecionado para `/pagamento/retorno`; se o webhook ainda não chegou, o app consulta o status (`InfinitePay::PaymentChecker`) como fallback
+
+> **Migration necessária:** a integração troca as colunas de Pix do MercadoPago por `checkout_url`. Em um banco existente, rode `bin/rails db:migrate` para aplicar `ReplaceMercadopagoWithInfinitepay`.
 
 ### Para produção
 
-Substitua pelas **Credenciais de produção** (sem o prefixo `TEST-`) e configure o webhook com o domínio real da aplicação.
+Defina `APP_HOST` com o domínio real (ex: `videiradental.com.br`). Nenhuma configuração adicional é necessária no painel do InfinitePay — webhook e redirect vão em cada cobrança.
+
+---
+
+## E-mails transacionais (SMTP)
+
+`BookingMailer` envia confirmação, cancelamento e emissão de crédito. Em produção (`config/environments/production.rb`), o SMTP é configurado por ENV:
+
+```bash
+MAILER_FROM=no-reply@videiradental.com.br   # remetente (tem default)
+SMTP_HOST=smtp.postmarkapp.com
+SMTP_PORT=587
+SMTP_USERNAME=...
+SMTP_PASSWORD=...
+```
+
+Provedores recomendados: Postmark, Amazon SES ou SendGrid. Em desenvolvimento, deixe o SMTP em branco — os e-mails não são enviados de verdade.
 
 ---
 
@@ -234,272 +322,188 @@ Substitua pelas **Credenciais de produção** (sem o prefixo `TEST-`) e configur
 bundle exec rspec
 ```
 
-A suíte cobre modelos, serviços e requests (89 exemplos).
+A suíte cobre models, services, requests e system specs (Capybara) — **148 exemplos**.
+
+```bash
+bin/rubocop      # estilo (omakase)
+bin/brakeman     # análise de segurança
+```
 
 ---
 
 ## CI — GitHub Actions
 
-O projeto já vem com um workflow em `.github/workflows/ci.yml` que roda automaticamente em todo push para `main` e em pull requests.
-
-### Jobs executados
+O workflow `.github/workflows/ci.yml` roda em todo push para `main` e em pull requests.
 
 | Job | O que faz |
 |---|---|
-| `scan_ruby` | Análise estática de segurança Rails com Brakeman |
-| `scan_js` | Auditoria de dependências JavaScript via importmap |
-| `lint` | Verificação de estilo com RuboCop |
-| `test` | Roda a suíte RSpec completa com PostgreSQL e Redis reais |
+| `scan_ruby` | Análise de segurança com Brakeman |
+| `scan_js` | Auditoria de dependências JS via `importmap audit` |
+| `lint` | Estilo com RuboCop |
+| `test` | Suíte RSpec completa com PostgreSQL e Redis como services |
 
-### Configuração necessária
-
-O CI não precisa de nenhuma configuração manual de secrets para rodar — ele usa credenciais mock para Google e MercadoPago, e sobe PostgreSQL e Redis como services do próprio GitHub Actions.
-
-### Adicionando secrets para deploy automático (opcional)
-
-Para configurar o Kamal dentro do CI (deploy automático no merge para `main`), adicione os secrets em **Settings → Secrets and variables → Actions** no repositório:
-
-| Secret | Valor |
-|---|---|
-| `KAMAL_REGISTRY_PASSWORD` | Senha do Docker Hub |
-| `RAILS_MASTER_KEY` | Conteúdo de `config/master.key` |
-| `DATABASE_URL` | URL do banco de produção |
-| `SECRET_KEY_BASE` | Gerado com `bin/rails secret` |
-| `GOOGLE_CLIENT_ID` | Credencial OAuth produção |
-| `GOOGLE_CLIENT_SECRET` | Credencial OAuth produção |
-| `MERCADOPAGO_ACCESS_TOKEN` | Token de produção MP |
-| `MERCADOPAGO_WEBHOOK_SECRET` | Secret do webhook MP |
-| `OWNER_PASSWORD` | Senha do owner (seed) |
-
-Depois adicione um job `deploy` ao workflow que rode `kamal deploy` após o job `test` passar.
-
----
-
-## Configurando o servidor VPS do zero
-
-Antes de rodar o `kamal setup`, o servidor precisa estar acessível via SSH. Siga os passos abaixo.
-
-### 1. Criar o servidor
-
-Escolha um provedor e crie uma instância Ubuntu 22.04 LTS:
-
-| Provedor | Plano recomendado | Custo |
-|---|---|---|
-| [Hetzner](https://hetzner.com/cloud) | CX22 (2 vCPU / 4 GB) | ~€4/mês |
-| [DigitalOcean](https://digitalocean.com) | Droplet 2 vCPU / 2 GB | ~$18/mês |
-| [AWS EC2](https://aws.amazon.com/ec2) | t3.small | ~$15/mês |
-
-Na criação, selecione **autenticação por SSH Key** e adicione sua chave pública local (`~/.ssh/id_rsa.pub`).
-
-### 2. Acessar o servidor
-
-```bash
-ssh root@SEU_IP
-```
-
-### 3. Criar usuário de deploy
-
-Não use `root` para o Kamal. Crie um usuário dedicado:
-
-```bash
-adduser deploy
-usermod -aG sudo deploy
-
-# Copiar as chaves SSH do root para o novo usuário
-rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy
-```
-
-### 4. Configurar o firewall
-
-```bash
-ufw allow OpenSSH
-ufw allow 80
-ufw allow 443
-ufw enable
-ufw status   # deve mostrar as 3 regras ativas
-```
-
-### 5. Instalar o Docker
-
-```bash
-curl -fsSL https://get.docker.com | sh
-usermod -aG docker deploy
-```
-
-### 6. Configurar o domínio (DNS)
-
-No painel do seu registrador de domínio (Registro.br, Cloudflare, etc.), crie um registro **A**:
-
-```
-Tipo:  A
-Nome:  @  (raiz) ou subdomínio (ex: app)
-Valor: SEU_IP_DO_SERVIDOR
-TTL:   300
-```
-
-Aguarde a propagação (5 min a 24h) e verifique:
-
-```bash
-dig seudominio.com.br +short
-# deve retornar o IP do servidor
-```
-
-### 7. Testar conexão com o usuário de deploy
-
-Da sua máquina local:
-
-```bash
-ssh deploy@SEU_IP
-# se conectar sem pedir senha, está pronto
-```
-
-Com isso o servidor está preparado. Siga para a próxima seção.
+O CI não precisa de secrets para rodar — usa credenciais mock (`INFINITEPAY_HANDLE`, Google) e sobe PostgreSQL e Redis como services do próprio GitHub Actions.
 
 ---
 
 ## Deploy em produção
 
-O projeto inclui um `Dockerfile` otimizado para produção. O método recomendado é o **Kamal**, ferramenta de deploy da própria equipe do Rails. Abaixo está o passo a passo completo do zero ao ar.
+O projeto inclui um `Dockerfile` de produção e os arquivos **`config/deploy.yml`** e **`.kamal/secrets`** já versionados (com placeholders). O método recomendado é o **Kamal 2**.
 
-### Pré-requisitos
+### Visão geral do plano
 
-**Servidor (VPS):**
-- Ubuntu 22.04+ configurado conforme a seção anterior
-- Portas 80 e 443 abertas no firewall
-- Domínio apontando para o IP do servidor
+```
+┌─ 1. Servidor VPS ──────────────────┐   ┌─ 2. Máquina local ─────────────┐
+│ • Ubuntu 22.04, usuário deploy     │   │ • Docker rodando               │
+│ • Docker instalado                 │   │ • gem install kamal            │
+│ • Firewall 80/443                  │   │ • Conta no Docker Hub          │
+│ • DNS apontando para o IP          │   └────────────────────────────────┘
+└────────────────────────────────────┘
+                 │
+                 ▼
+   3. Editar config/deploy.yml (IP, domínio, usuário Docker Hub)
+   4. Editar .kamal/secrets    (credenciais reais)
+                 │
+                 ▼
+   5. kamal setup   → build + push + sobe tudo + SSL + db:prepare
+   6. kamal deploy  → deploys seguintes (zero downtime)
+```
 
-**Máquina local:**
-- Docker instalado e rodando
-- Conta no [Docker Hub](https://hub.docker.com) (gratuita)
+Os arquivos `config/deploy.yml` e `.kamal/secrets` **já existem** — o deploy é preencher os placeholders, não criá-los do zero.
 
-### 1. Instalar o Kamal (máquina local)
+### 1. Preparar o servidor VPS
+
+Crie uma instância **Ubuntu 22.04 LTS**:
+
+| Provedor | Plano sugerido | Custo aprox. |
+|---|---|---|
+| [Hetzner](https://hetzner.com/cloud) | CX22 (2 vCPU / 4 GB) | ~€4/mês |
+| [DigitalOcean](https://digitalocean.com) | Droplet 2 vCPU / 2 GB | ~$18/mês |
+| [AWS EC2](https://aws.amazon.com/ec2) | t3.small | ~$15/mês |
+
+Na criação, use **autenticação por SSH Key** (adicione sua `~/.ssh/id_rsa.pub`). Depois, conectado como root:
+
+```bash
+ssh root@SEU_IP
+
+# Usuário de deploy dedicado (não use root no Kamal)
+adduser deploy
+usermod -aG sudo deploy
+rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy
+
+# Firewall
+ufw allow OpenSSH && ufw allow 80 && ufw allow 443 && ufw enable
+
+# Docker
+curl -fsSL https://get.docker.com | sh
+usermod -aG docker deploy
+```
+
+**DNS:** no seu registrador, crie um registro **A** apontando `@` (ou subdomínio) para o IP do servidor. Verifique:
+
+```bash
+dig seudominio.com.br +short   # deve retornar o IP
+```
+
+Teste o acesso com o usuário de deploy:
+
+```bash
+ssh deploy@SEU_IP   # deve conectar sem pedir senha
+```
+
+### 2. Preparar a máquina local
 
 ```bash
 gem install kamal
+docker info   # confirme que o Docker está rodando
 ```
 
-### 2. Inicializar a configuração do Kamal
+Tenha uma conta no [Docker Hub](https://hub.docker.com) (a imagem será publicada lá).
 
-```bash
-kamal init
-```
+### 3. Preencher `config/deploy.yml`
 
-Isso cria o arquivo `config/deploy.yml`. Configure-o com os dados do seu servidor:
+Edite o arquivo existente e substitua os placeholders:
 
-```yaml
-# config/deploy.yml
-service: videira-dental
-image: seu-usuario-dockerhub/videira-dental
+| Placeholder | Substituir por |
+|---|---|
+| `SEU_USUARIO_DOCKERHUB` | seu usuário do Docker Hub (em `image:` e `registry.username`) |
+| `SEU_IP_DO_SERVIDOR` | o IP da VPS (em `servers.web`, `servers.job` e nos `accessories`) |
+| `SEU_DOMINIO.com.br` | seu domínio (em `proxy.host`) |
 
-servers:
-  web:
-    - SEU_IP_DO_SERVIDOR
-  job:
-    hosts:
-      - SEU_IP_DO_SERVIDOR
-    cmd: bundle exec sidekiq
+O arquivo já está estruturado com:
+- **web** (Rails) + **job** (Sidekiq) no mesmo host
+- **accessories**: PostgreSQL 16 e Redis 7
+- variáveis `clear` (RAILS_ENV, REDIS_URL, regras de negócio) e `secret` (credenciais)
+- `proxy.ssl: true` + `proxy.app_port: 3000` (Let's Encrypt automático, roteando para a porta do Rails)
+- **`volumes:`** — volume persistente `videira_dental_storage:/rails/storage` para os uploads do Active Storage (avatares e logo). Sem ele, as imagens seriam perdidas a cada deploy.
 
-registry:
-  username: seu-usuario-dockerhub
-  password:
-    - KAMAL_REGISTRY_PASSWORD
+> Este app **não usa Rails credentials** (é 100% movido a ENV), então **não precisa de `RAILS_MASTER_KEY` nem de `config/master.key`**.
 
-env:
-  clear:
-    RAILS_ENV: production
-    REDIS_URL: redis://localhost:6379/0
-  secret:
-    - RAILS_MASTER_KEY
-    - SECRET_KEY_BASE
-    - DATABASE_URL
-    - GOOGLE_CLIENT_ID
-    - GOOGLE_CLIENT_SECRET
-    - MERCADOPAGO_ACCESS_TOKEN
-    - MERCADOPAGO_PUBLIC_KEY
-    - MERCADOPAGO_WEBHOOK_SECRET
-    - OWNER_PASSWORD
+### 4. Preencher `.kamal/secrets`
 
-accessories:
-  db:
-    image: postgres:16
-    host: SEU_IP_DO_SERVIDOR
-    env:
-      secret:
-        - POSTGRES_PASSWORD
-    directories:
-      - data:/var/lib/postgresql/data
-  redis:
-    image: redis:7
-    host: SEU_IP_DO_SERVIDOR
-    directories:
-      - data:/data
-
-proxy:
-  ssl: true
-  host: seudominio.com.br
-```
-
-### 3. Configurar os secrets
-
-Crie o arquivo `.kamal/secrets` (nunca commite esse arquivo — ele já está no `.gitignore`):
+Edite o arquivo existente (já no `.gitignore` — nunca é commitado) com os valores reais:
 
 ```bash
 KAMAL_REGISTRY_PASSWORD=sua-senha-dockerhub
-RAILS_MASTER_KEY=$(cat config/master.key)
-SECRET_KEY_BASE=$(bin/rails secret)
-DATABASE_URL=postgresql://postgres:SENHA_POSTGRES@localhost:5432/videira_dental_production
-POSTGRES_PASSWORD=SENHA_POSTGRES
-GOOGLE_CLIENT_ID=seu-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=seu-client-secret
-MERCADOPAGO_ACCESS_TOKEN=APP_USR-seu-token-producao
-MERCADOPAGO_PUBLIC_KEY=APP_USR-sua-public-key
-MERCADOPAGO_WEBHOOK_SECRET=seu-webhook-secret
-OWNER_PASSWORD=SenhaForteOwner2024!
+SECRET_KEY_BASE=...                 # gere com: bin/rails secret
+DATABASE_URL=postgresql://postgres:SENHA@videira-dental-db:5432/videira_dental_production
+POSTGRES_PASSWORD=SENHA
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+INFINITEPAY_HANDLE=seu-handle-sem-cifrao
+OWNER_PASSWORD=SenhaForteOwner!
+APP_HOST=seudominio.com.br
+SMTP_HOST=smtp.postmarkapp.com
+SMTP_PORT=587
+SMTP_USERNAME=...
+SMTP_PASSWORD=...
 ```
 
-### 4. Primeiro deploy
+### 5. Primeiro deploy
 
 ```bash
 kamal setup
 ```
 
-Esse comando executa tudo de uma vez:
-1. Faz o build da imagem Docker localmente
-2. Envia a imagem para o Docker Hub
-3. Instala os containers no servidor (Rails + Sidekiq + PostgreSQL + Redis)
-4. Obtém o certificado SSL via Let's Encrypt
-5. Roda `db:prepare` (cria e migra o banco automaticamente)
+Esse comando faz tudo de uma vez: build da imagem → push para o Docker Hub → sobe os containers (Rails + Sidekiq + PostgreSQL + Redis) → obtém SSL via Let's Encrypt → roda `db:prepare` (cria e migra o banco; o `bin/docker-entrypoint` cuida disso).
 
-Ao final, a aplicação estará disponível em `https://seudominio.com.br`.
-
-### 5. Deploys subsequentes
-
-A cada nova versão:
+Ao final, a aplicação estará em `https://seudominio.com.br`. Rode o seed uma vez:
 
 ```bash
-git push origin main  # envia o código
-kamal deploy          # build + push + swap sem downtime
+kamal app exec 'bin/rails db:seed'
 ```
 
-O Kamal faz o deploy com **zero downtime** — o container antigo só é removido após o novo estar saudável.
+### 6. Deploys seguintes e operação
 
-### Comandos úteis no dia a dia
+```bash
+git push origin main   # envia o código
+kamal deploy           # build + push + swap com zero downtime
+```
+
+Comandos úteis no dia a dia:
 
 ```bash
 kamal logs                              # logs em tempo real
 kamal console                           # Rails console no servidor
 kamal app exec 'bin/rails db:migrate'   # rodar migrations
-kamal app exec 'bin/rails db:seed'      # rodar seeds
 kamal redeploy                          # redeploy sem rebuild (mais rápido)
 kamal rollback                          # volta para a versão anterior
 kamal app details                       # status dos containers
+curl https://seudominio.com.br/up       # health check do Rails
 ```
 
-### Verificando o deploy
+**Deploy automático no CI (opcional):** adicione os secrets em **Settings → Secrets and variables → Actions** (`KAMAL_REGISTRY_PASSWORD`, `DATABASE_URL`, `SECRET_KEY_BASE`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `INFINITEPAY_HANDLE`, `OWNER_PASSWORD`, SMTP_*) e crie um job `deploy` que rode `kamal deploy` após o job `test` passar.
+
+### Backups (importante)
+
+Nesta configuração, **PostgreSQL e os uploads ficam em volumes no próprio servidor**. Se o servidor falhar, os dados são perdidos sem backup. Configure ao menos:
 
 ```bash
-kamal app details                    # deve mostrar containers rodando
-curl https://seudominio.com.br/up    # endpoint de health check do Rails
+# Dump do banco (rode via cron na VPS, ex.: diário)
+kamal accessory exec db 'pg_dump -U postgres videira_dental_production' > backup_$(date +%F).sql
+
+# Uploads do Active Storage (volume videira_dental_storage)
+# copie periodicamente para fora do servidor (ex.: rsync para outro host ou S3)
 ```
 
 ---
@@ -522,8 +526,8 @@ docker run -d \
   -e SECRET_KEY_BASE=$(bin/rails secret) \
   -e GOOGLE_CLIENT_ID=... \
   -e GOOGLE_CLIENT_SECRET=... \
-  -e MERCADOPAGO_ACCESS_TOKEN=... \
-  -e MERCADOPAGO_WEBHOOK_SECRET=... \
+  -e INFINITEPAY_CLIENT_ID=... \
+  -e INFINITEPAY_CLIENT_SECRET=... \
   --name videira-dental \
   videira-dental
 
@@ -533,7 +537,6 @@ docker run -d \
   -e DATABASE_URL=postgresql://usuario:senha@localhost:5432/videira_dental_production \
   -e REDIS_URL=redis://localhost:6379/0 \
   -e SECRET_KEY_BASE=$(bin/rails secret) \
-  -e MERCADOPAGO_ACCESS_TOKEN=... \
   --name videira-dental-worker \
   videira-dental \
   bundle exec sidekiq
@@ -571,28 +574,33 @@ sudo certbot --nginx -d seudominio.com.br
 ```
 app/
 ├── controllers/
-│   ├── scheduling/        # Carrinho e reservas (paciente/dentista)
-│   ├── payments/          # Pagamento Pix e webhook MercadoPago
+│   ├── scheduling/        # Carrinho e reservas (dentista)
+│   ├── payments/          # Pagamento Pix, retorno e webhook InfinitePay
+│   ├── users/             # Perfil e carteira
+│   ├── auth/              # Sessions, registrations, OAuth callbacks
 │   └── admin/             # Painel administrativo
 ├── services/
-│   ├── booking_group_creator.rb   # Cria reserva + pagamento em transação atômica
-│   ├── booking_canceller.rb       # Valida regra de 48h e libera o slot
-│   ├── payment_confirmer.rb       # Confirma pagamento e faz broadcast Turbo
-│   └── mercado_pago/              # PixCreator, PaymentFinder, WebhookValidator
+│   ├── booking_group_creator.rb     # Cria reserva + pagamento em transação atômica (FOR UPDATE)
+│   ├── booking_canceller.rb         # Valida regra de 48h, libera o slot e emite crédito
+│   ├── discount_calculator.rb       # Aplica a melhor regra de desconto por volume
+│   ├── credit_issuer.rb             # Emite crédito ao cancelar reserva paga
+│   ├── payment_confirmer.rb         # Confirma pagamento e faz broadcast Turbo
+│   └── infinite_pay/                # CheckoutCreator, PaymentChecker
 ├── jobs/
-│   └── expire_payments_job.rb     # Expira pagamentos pendentes a cada 5 min
+│   └── expire_payments_job.rb       # Expira pagamentos pendentes a cada 5 min (sidekiq-cron)
 └── models/
     ├── booking_group.rb   # Agrupa N bookings sob 1 pagamento
-    ├── availability.rb    # Slot de horário do dentista
-    └── payment.rb         # Registro de pagamento Pix
+    ├── availability.rb    # Slot de horário (turno) da sala
+    ├── payment.rb         # Registro de pagamento (checkout_url InfinitePay)
+    └── credit.rb          # Crédito em conta do dentista
 ```
 
 **Fluxo de pagamento:**
 
 1. Dentista adiciona horários ao carrinho (`session[:cart_ids]`)
-2. Checkout cria `BookingGroup` + `Booking`s + `Payment` em uma única transação com `FOR UPDATE` (evita double-booking)
-3. MercadoPago retorna QR Code Pix exibido via Turbo Stream
-4. Webhook valida assinatura HMAC-SHA256 e chama `PaymentConfirmer`
+2. Checkout cria `BookingGroup` + `Booking`s + `Payment` numa única transação com `FOR UPDATE` (evita double-booking); créditos disponíveis são abatidos
+3. Se restar valor a pagar, `InfinitePay::CheckoutCreator` gera o link e o dentista é redirecionado ao checkout
+4. InfinitePay envia o webhook → `PaymentConfirmer` confirma reserva e pagamento
 5. Turbo Stream atualiza a tela do dentista em tempo real
 
 ---
@@ -601,7 +609,7 @@ app/
 
 ### `PG::ConnectionBad: FATAL: role "usuario" does not exist`
 
-Seu usuário do sistema não tem permissão no PostgreSQL. Execute:
+Seu usuário do sistema não tem permissão no PostgreSQL:
 
 ```bash
 sudo -u postgres createuser $USER --superuser
@@ -609,41 +617,38 @@ sudo -u postgres createuser $USER --superuser
 
 ### `Redis::CannotConnectError: Error connecting to Redis`
 
-O Redis não está rodando. Inicie-o:
+O Redis não está rodando:
 
 ```bash
 redis-server
-# ou como serviço:
-sudo systemctl start redis
+# ou: sudo systemctl start redis
 ```
+
+### `KeyError: key not found: "INFINITEPAY_HANDLE"`
+
+O fluxo de pagamento foi acionado sem o handle no `.env`. Defina `INFINITEPAY_HANDLE` e reinicie o servidor.
+
+### Webhook do InfinitePay não chega em desenvolvimento
+
+O InfinitePay precisa de uma URL HTTPS pública. Use o [ngrok](https://ngrok.com/download) e atualize `APP_HOST` no `.env` com o domínio gerado (muda a cada sessão na versão gratuita). Reinicie o servidor após alterar.
 
 ### `ActionController::InvalidAuthenticityToken` no webhook
 
-O webhook do MercadoPago não envia token CSRF. Isso já está tratado no `WebhooksController` com `protect_from_forgery with: :null_session`. Se aparecer esse erro, verifique se está acessando a rota correta (`POST /webhooks/mercadopago`).
-
-### Webhook não chega em desenvolvimento
-
-O MercadoPago precisa de uma URL HTTPS pública. Use ngrok:
-
-```bash
-ngrok http 3000
-```
-
-Atualize a URL no painel do MercadoPago cada vez que o ngrok reiniciar (a URL muda a cada sessão na versão gratuita).
-
-### `HMAC inválido` — webhook retorna 401
-
-O `MERCADOPAGO_WEBHOOK_SECRET` no `.env` não bate com o configurado no painel do MP. Verifique e copie novamente. Em desenvolvimento com o secret começando com `mock`, a validação é ignorada automaticamente.
+O webhook não envia token CSRF. Isso já está tratado em `Payments::WebhooksController` com `protect_from_forgery with: :null_session`. Confirme que a rota é `POST /webhooks/infinitepay`.
 
 ### Login com Google redireciona para erro
 
-- Verifique se `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` estão corretos no `.env`
-- Confirme que `http://localhost:3000/auth/google_oauth2/callback` está na lista de **Authorized redirect URIs** no Google Cloud Console
+- Verifique `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` no `.env`
+- Confirme que `http://localhost:3000/auth/google_oauth2/callback` está nos **Authorized redirect URIs**
 - Reinicie o servidor após alterar o `.env`
+
+### Pagamentos não expiram
+
+A expiração roda no Sidekiq via sidekiq-cron (`ExpirePaymentsJob`, a cada 5 min). Garanta que o Sidekiq está rodando (`bin/dev` já o inicia, desde que o Redis esteja ativo).
 
 ### Assets não compilam / Tailwind não atualiza
 
-Certifique-se de subir o servidor com `bin/dev` (não `bin/rails server`). O `bin/dev` inicia o compilador do Tailwind em paralelo.
+Suba com `bin/dev` (não `bin/rails server`) — ele inicia o compilador do Tailwind em paralelo.
 
 ### Reservas ficam presas em "aguardando pagamento" / horários não são liberados
 
@@ -672,7 +677,7 @@ bundle exec rails runner "ExpirePaymentsJob.perform_now"
 
 ### `bin/rails db:seed` falha com e-mail duplicado
 
-O seed já foi rodado antes. Limpe o banco e rode novamente:
+O seed já foi rodado. Recrie o banco:
 
 ```bash
 bin/rails db:drop db:create db:migrate db:seed
@@ -682,4 +687,18 @@ bin/rails db:drop db:create db:migrate db:seed
 
 ## Variáveis de ambiente completas
 
-Veja o arquivo [`.env.example`](.env.example) para a lista completa com descrições.
+Veja [`.env.example`](.env.example) para a lista completa com descrições. Resumo:
+
+| Variável | Dev | Prod | Default |
+|---|:---:|:---:|---|
+| `DATABASE_URL` | — (peer auth) | ✅ | — |
+| `REDIS_URL` | ✅ | ✅ | `redis://localhost:6379/0` |
+| `SECRET_KEY_BASE` | ✅ | ✅ (secret) | — |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | opcional | ✅ | — |
+| `INFINITEPAY_HANDLE` | opcional | ✅ | — |
+| `APP_HOST` | ✅ | ✅ | `localhost:3000` / `videiradental.com.br` |
+| `OWNER_PASSWORD` | ✅ | ✅ | — |
+| `CANCELLATION_LEAD_HOURS` | opcional | opcional | `48` |
+| `PAYMENT_EXPIRY_MINUTES` | opcional | opcional | `30` |
+| `MAILER_FROM` | — | opcional | `no-reply@videiradental.com.br` |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USERNAME` / `SMTP_PASSWORD` | — | ✅ | — |

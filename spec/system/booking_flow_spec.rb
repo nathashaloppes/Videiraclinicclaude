@@ -28,8 +28,14 @@ RSpec.describe "Booking flow", type: :system do
   context "as a signed in dentist" do
     before { sign_in dentist }
 
-    it "completes a reservation with sandbox Pix" do
-      ENV["MERCADOPAGO_ACCESS_TOKEN"] = "TEST-mock-token"
+    it "completes a reservation and shows InfinitePay checkout button" do
+      allow(InfinitePay::CheckoutCreator).to receive(:call).and_return(
+        ApplicationService::Result.new(
+          success: true,
+          value: { checkout_url: "https://checkout.infinitepay.io/test", expires_at: 30.minutes.from_now },
+          error: nil
+        )
+      )
 
       visit root_path
       click_button "R$ 170,00", match: :first
@@ -39,9 +45,7 @@ RSpec.describe "Booking flow", type: :system do
 
       click_button "Confirmar e gerar Pix →"
       expect(page).to have_content("Pagamento via Pix")
-      expect(page).to have_content("Tempo restante")
-    ensure
-      ENV.delete("MERCADOPAGO_ACCESS_TOKEN")
+      expect(page).to have_content("Pagar via Pix no InfinitePay")
     end
   end
 end

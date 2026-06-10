@@ -2,22 +2,28 @@
 <% count = cart_ids.size %>
 
 <% if count > 0 %>
-  <div class="w-full rounded-2xl shadow-lg px-4 py-3 flex flex-col gap-2 mt-3"
-       style="background-color: #ffffff">
-    <span class="text-xs text-center font-medium" style="color: #8D6E63">
-      <%= count %> <%= count == 1 ? "turno selecionado" : "turnos selecionados" %>
-    </span>
-    <div class="flex items-center gap-2">
-      <%= link_to carrinho_path,
-            class: "btn-sm-outline flex-1 text-center",
-            data: { turbo_frame: "_top" } do %>
-        Ver seleção
-      <% end %>
-      <%= link_to confirmar_reservas_path,
-            class: "btn-sm-primary flex-1 text-center",
-            data: { turbo_frame: "_top" } do %>
-        Confirmar →
-      <% end %>
+  <div class="fixed bottom-0 left-0 right-0 z-30 px-4 pb-4 pt-2"
+       style="background: linear-gradient(to top, #fef8e1 80%, transparent)">
+    <div class="max-w-md mx-auto bg-white rounded-2xl shadow-lg px-4 py-3 flex items-center gap-3">
+      <span class="text-xs font-medium shrink-0" style="color: #8D6E63">
+        <%= count %> <%= count == 1 ? "turno selecionado" : "turnos selecionados" %>
+      </span>
+      <div class="flex items-center gap-2 ml-auto">
+        <%= button_to carrinho_path, method: :delete,
+              class: "text-xs font-medium px-4 py-2 rounded-full border cursor-pointer",
+              style: "border-color: #5D4037; color: #5D4037; background: transparent",
+              data: { turbo: false } do %>
+          Limpar seleção
+        <% end %>
+        <%= link_to carrinho_path,
+              class: "text-xs font-medium px-4 py-2 rounded-full text-white",
+              style: "background-color: #5D4037",
+              data: { turbo_frame: "_top" } do %>
+          Adicionar ao carrinho
+        <% end %>
+      </div>
     </div>
   </div>
+  <%# Spacer so content doesn't hide behind fixed bar %>
+  <div class="h-20"></div>
 <% end %>

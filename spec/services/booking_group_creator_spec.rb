@@ -7,21 +7,19 @@ RSpec.describe BookingGroupCreator, type: :service do
   let(:av1)      { create(:availability, clinic: clinic, service: service) }
   let(:av2)      { create(:availability, clinic: clinic, service: service) }
 
-  let(:pix_result) do
+  let(:checkout_result) do
     ApplicationService::Result.new(
       success: true,
       value: {
-        gateway_id: "SANDBOX_1",
-        pix_qr_code: "00020101...",
-        pix_qr_url: "",
-        expires_at: 30.minutes.from_now
+        checkout_url: "https://checkout.infinitepay.io/test123",
+        expires_at:   30.minutes.from_now
       },
       error: nil
     )
   end
 
   before do
-    allow(MercadoPago::PixCreator).to receive(:call).and_return(pix_result)
+    allow(InfinitePay::CheckoutCreator).to receive(:call).and_return(checkout_result)
   end
 
   describe ".call" do
@@ -42,7 +40,7 @@ RSpec.describe BookingGroupCreator, type: :service do
         expect(group).to be_a(BookingGroup)
         expect(group.bookings.count).to eq(2)
         expect(group.payment).to be_present
-        expect(group.payment.gateway_id).to eq("SANDBOX_1")
+        expect(group.payment.checkout_url).to eq("https://checkout.infinitepay.io/test123")
       end
 
       it "marks availabilities as booked" do
@@ -50,9 +48,9 @@ RSpec.describe BookingGroupCreator, type: :service do
         expect(av1.reload.status).to eq("booked")
       end
 
-      it "calls MercadoPago::PixCreator" do
+      it "calls InfinitePay::CheckoutCreator" do
         BookingGroupCreator.call(user: patient, availability_ids: [av1.id])
-        expect(MercadoPago::PixCreator).to have_received(:call)
+        expect(InfinitePay::CheckoutCreator).to have_received(:call)
       end
     end
 
@@ -68,10 +66,10 @@ RSpec.describe BookingGroupCreator, type: :service do
       end
     end
 
-    context "when MercadoPago returns an error" do
-      let(:failed_pix) { ApplicationService::Result.new(success: false, value: nil, error: "MP error") }
+    context "when InfinitePay returns an error" do
+      let(:failed_checkout) { ApplicationService::Result.new(success: false, value: nil, error: "IP error") }
 
-      before { allow(MercadoPago::PixCreator).to receive(:call).and_return(failed_pix) }
+      before { allow(InfinitePay::CheckoutCreator).to receive(:call).and_return(failed_checkout) }
 
       it "returns failure and rolls back the transaction" do
         expect {

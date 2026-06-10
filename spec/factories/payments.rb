@@ -5,15 +5,14 @@ FactoryBot.define do
 
     amount_cents { 30_000 }
     status       { "pending" }
-    gateway      { "mercadopago" }
-    sequence(:gateway_id) { |n| "SANDBOX_#{n}" }
-    pix_qr_code  { "00020101021226...mock_pix_code" }
-    pix_qr_url   { "" }
+    gateway      { "infinitepay" }
+    checkout_url { "https://checkout.infinitepay.io/test-#{SecureRandom.hex(6)}" }
     expires_at   { 30.minutes.from_now }
 
     trait :paid do
-      status  { "paid" }
-      paid_at { Time.current }
+      status     { "paid" }
+      paid_at    { Time.current }
+      gateway_id { "txn-#{SecureRandom.hex(8)}" }
     end
 
     trait :expired do

@@ -7,8 +7,10 @@ class Admin::BookingsController < Admin::BaseController
       .order(created_at: :desc)
 
     scope = scope.where(status: params[:status]) if params[:status].present?
-    scope = scope.joins(bookings: :availability)
-                 .where(availabilities: { date: Date.parse(params[:date]) }) if params[:date].present?
+    if params[:date].present?
+      scope = scope.joins(bookings: :availability)
+                   .where(availabilities: { date: Date.parse(params[:date]) })
+    end
 
     @pagy, @booking_groups = pagy(scope)
   end
