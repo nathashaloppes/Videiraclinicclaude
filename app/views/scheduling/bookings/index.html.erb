@@ -2,44 +2,59 @@
 
 <%= render "shared/back_button", path: root_path %>
 
-<h1 class="text-2xl font-medium mb-6 text-vdc-primary">Minhas reservas</h1>
+<h1 class="text-2xl font-medium mb-4" style="color: #5D4037">Minhas reservas</h1>
+
+<%# Filtro por mês %>
+<div class="bg-white rounded-2xl shadow-sm px-4 py-1 mb-4">
+  <%= form_with url: reservas_path, method: :get, data: { turbo: false } do |f| %>
+    <%= f.select :month,
+          options_for_select(
+            @months.map { |m|
+              year, mon = m.split("-").map(&:to_i)
+              label = I18n.l(Date.new(year, mon, 1), format: "%B de %Y").capitalize
+              [label, m]
+            },
+            @selected_month
+          ),
+          {},
+          class: "w-full bg-transparent border-none outline-none py-3 text-sm font-medium cursor-pointer",
+          style: "color: #5D4037",
+          onchange: "this.form.submit()" %>
+  <% end %>
+</div>
 
 <% if @booking_groups.empty? %>
   <div class="text-center py-12">
-    <p class="text-sm mb-6 text-vdc-secondary">Você ainda não tem reservas.</p>
+    <p class="text-sm mb-6" style="color: #8D6E63">Nenhuma reserva encontrada.</p>
     <%= link_to "Reservar agora →", root_path, class: "btn-cta" %>
   </div>
 <% else %>
-  <div class="flex flex-col gap-3 mb-4">
-    <% @booking_groups.each do |group| %>
-      <%= link_to reserva_path(group),
-            class: "block bg-white rounded-2xl shadow-sm p-4 hover:shadow-md transition-all active:scale-[0.98]" do %>
-
-        <div class="flex items-center justify-between mb-3">
-          <span class="<%= booking_group_status_badge(group.status) %>">
-            <%= t("booking_group.status.#{group.status}") %>
-          </span>
-        </div>
-
-        <div class="flex flex-col gap-1 mb-3">
-          <% group.bookings.each do |b| %>
-            <p class="font-medium text-sm text-vdc-foreground">
-              <%= b.availability.label %>
+  <div class="bg-white rounded-2xl shadow-sm overflow-hidden mb-4">
+    <% @booking_groups.each_with_index do |group, i| %>
+      <% group.bookings.each do |b| %>
+        <div class="flex items-center justify-between px-4 py-4 <%= i.positive? || b != group.bookings.first ? 'border-t' : '' %>"
+             style="border-color: #F5F5F5">
+          <div class="flex-1 min-w-0">
+            <p class="font-medium text-sm" style="color: #3E2723"><%= b.availability.label %></p>
+            <p class="text-xs mt-0.5" style="color: #8D6E63">
+              <%= l(b.availability.date, format: "%-d de %B") %> –
+              <%= b.availability.starts_at.strftime("%Hh%M") %> às <%= b.availability.ends_at.strftime("%Hh%M") %>
             </p>
-            <p class="text-xs text-vdc-secondary">
-              <%= l(b.availability.date, format: :default) %> · <%= b.availability.time_range %>
+            <p class="text-sm font-medium mt-0.5" style="color: #5D4037">
+              R$ <%= money(b.price_cents) %>
             </p>
+          </div>
+          <%= link_to reserva_path(group),
+                class: "shrink-0 ml-3 p-2 rounded-lg",
+                style: "color: #8D6E63" do %>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
           <% end %>
         </div>
 
-        <div class="flex justify-between items-center border-t pt-3 border-vdc-default">
-          <span class="text-xs text-vdc-secondary">
-            <%= pluralize(group.bookings.size, "horário", "horários") %>
-          </span>
-          <span class="text-sm font-medium text-vdc-primary">
-            R$ <%= money(group.total_cents) %>
-          </span>
-        </div>
 
       <% end %>
     <% end %>

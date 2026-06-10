@@ -1,53 +1,52 @@
 require "rails_helper"
 
 RSpec.describe "Webhooks", type: :request do
-  let(:clinic)  { create(:clinic) }
-  let(:patient) { create(:user, :dentist, clinic: clinic) }
-  let(:group)   { create(:booking_group, clinic: clinic, dentist: patient) }
+  let(:clinic)   { create(:clinic) }
+  let(:patient)  { create(:user, :dentist, clinic: clinic) }
+  let(:group)    { create(:booking_group, clinic: clinic, dentist: patient) }
   let!(:payment) { create(:payment, clinic: clinic, booking_group: group) }
 
   before do
-    ENV["MERCADOPAGO_WEBHOOK_SECRET"] = "mock-webhook-secret-replace-me"
-
-    allow(MercadoPago::PaymentFinder).to receive(:call).and_return(
-      ApplicationService::Result.new(
-        success: true,
-        value: { "external_reference" => group.id, "status" => "approved" },
-        error: nil
-      )
-    )
     allow(Turbo::StreamsChannel).to receive(:broadcast_replace_to)
+    allow(BookingMailer).to receive_message_chain(:confirmation, :deliver_later)
   end
 
-  after { ENV.delete("MERCADOPAGO_WEBHOOK_SECRET") }
-
-  # action: "payment.updated" is required for the controller to call PaymentConfirmer
   let(:payload) do
-    { type: "payment", action: "payment.updated", data: { id: payment.gateway_id } }.to_json
+    {
+      order_nsu:       group.id,
+      transaction_nsu: "txn-abc123",
+      invoice_slug:    "slug-abc",
+      amount:          payment.amount_cents,
+      paid_amount:     payment.amount_cents,
+      capture_method:  "pix",
+      installments:    1
+    }.to_json
   end
 
-  let(:headers) do
-    { "CONTENT_TYPE" => "application/json", "x-signature" => "ts=1,v1=mock", "x-request-id" => "req-1" }
-  end
+  let(:headers) { { "CONTENT_TYPE" => "application/json" } }
 
-  describe "POST /webhooks/mercadopago" do
+  describe "POST /webhooks/infinitepay" do
     it "returns 200 OK" do
-      post mercadopago_webhook_path, params: payload, headers: headers
+      post infinitepay_webhook_path, params: payload, headers: headers
       expect(response).to have_http_status(:ok)
     end
 
     it "confirms the booking group" do
-      post mercadopago_webhook_path, params: payload, headers: headers
+      post infinitepay_webhook_path, params: payload, headers: headers
       expect(group.reload.status).to eq("confirmed")
     end
 
-    context "with invalid signature and real secret" do
-      before { ENV["MERCADOPAGO_WEBHOOK_SECRET"] = "real-secret-key" }
+    it "ignores unknown order_nsu" do
+      bad_payload = { order_nsu: SecureRandom.uuid, capture_method: "pix", paid_amount: 1000 }.to_json
+      post infinitepay_webhook_path, params: bad_payload, headers: headers
+      expect(response).to have_http_status(:ok)
+      expect(group.reload.status).to eq("pending")
+    end
 
-      it "returns 401" do
-        post mercadopago_webhook_path, params: payload, headers: headers
-        expect(response).to have_http_status(:unauthorized)
-      end
+    it "ignores non-pix capture methods" do
+      card_payload = { order_nsu: group.id, capture_method: "credit_card", paid_amount: 1000 }.to_json
+      post infinitepay_webhook_path, params: card_payload, headers: headers
+      expect(group.reload.status).to eq("pending")
     end
   end
 end

@@ -1,71 +1,122 @@
-<% content_for :title, "Editar perfil" %>
+<% content_for :title, "Cadastro" %>
 
-<%= render "shared/back_button", path: perfil_path %>
-
-<h1 class="text-2xl font-medium mb-6" style="color: #3E2723">Editar perfil</h1>
+<%= render "shared/back_button", path: root_path %>
 
 <%= render "shared/form_errors", object: @user if @user.errors.any? %>
 
-<%= form_with model: @user, url: perfil_path, method: :patch, multipart: true,
-      class: "flex flex-col gap-3" do |f| %>
+<div class="bg-white rounded-2xl shadow-sm p-5">
+  <%= form_with model: @user, url: perfil_path, method: :patch, multipart: true,
+        class: "flex flex-col gap-4" do |f| %>
 
-  <div class="flex justify-center mb-2">
-    <%= render "shared/avatar", user: @user, size: "lg" %>
-  </div>
-
-  <div>
-    <%= f.label :avatar, "Foto de perfil", class: "block text-xs font-medium mb-1 px-1", style: "color: #8D6E63" %>
-    <div class="bg-white rounded-2xl shadow-sm px-4 py-1">
-      <%= f.file_field :avatar, accept: "image/*",
-            class: "w-full bg-transparent border-none outline-none py-3 text-sm",
-            style: "color: #3E2723" %>
+    <%# Avatar %>
+    <div class="flex flex-col items-center mb-2">
+      <div class="relative">
+        <%= render "shared/avatar", user: @user, size: "lg" %>
+        <label for="avatar_upload"
+               class="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer shadow"
+               style="background-color: #5D4037">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </label>
+        <%= f.file_field :avatar, id: "avatar_upload", accept: "image/*",
+              class: "hidden" %>
+      </div>
+      <p class="text-xs mt-2" style="color: #8D6E63">Adicionar foto</p>
     </div>
-  </div>
 
-  <div>
-    <%= f.label :name, "Nome completo", class: "block text-xs font-medium mb-1 px-1", style: "color: #8D6E63" %>
-    <div class="bg-white rounded-2xl shadow-sm px-4 py-1">
-      <%= f.text_field :name,
-            placeholder: "Nome completo",
-            class: "w-full bg-transparent border-none outline-none py-3 text-sm",
-            style: "color: #3E2723" %>
+    <div>
+      <label class="label">Nome completo</label>
+      <div class="bg-[#fef8e1] rounded-2xl px-4 py-1">
+        <%= f.text_field :name,
+              placeholder: "Nome completo",
+              class: "w-full bg-transparent border-none outline-none py-3 text-sm",
+              style: "color: #3E2723" %>
+      </div>
     </div>
-  </div>
 
-  <div>
-    <%= f.label :phone, "Telefone", class: "block text-xs font-medium mb-1 px-1", style: "color: #8D6E63" %>
-    <div class="bg-white rounded-2xl shadow-sm px-4 py-1">
-      <%= f.telephone_field :phone, autocomplete: "tel",
-            placeholder: "(11) 91234-5678",
-            class: "w-full bg-transparent border-none outline-none py-3 text-sm",
-            style: "color: #3E2723",
-            data: { controller: "input-mask", "input-mask-pattern-value": "phone" } %>
+    <div>
+      <label class="label">Registro CRO</label>
+      <div class="bg-[#fef8e1] rounded-2xl px-4 py-1">
+        <%= f.text_field :cro,
+              placeholder: "CRO-XX 00000",
+              class: "w-full bg-transparent border-none outline-none py-3 text-sm",
+              style: "color: #3E2723" %>
+      </div>
     </div>
-  </div>
 
-  <div>
-    <%= f.label :cpf, "CPF", class: "block text-xs font-medium mb-1 px-1", style: "color: #8D6E63" %>
-    <div class="bg-white rounded-2xl shadow-sm px-4 py-1">
-      <%= f.text_field :cpf, inputmode: "numeric",
-            placeholder: "000.000.000-00",
-            class: "w-full bg-transparent border-none outline-none py-3 text-sm",
-            style: "color: #3E2723",
-            data: { controller: "input-mask", "input-mask-pattern-value": "cpf" } %>
+    <div>
+      <label class="label">Área de atuação</label>
+      <div class="bg-[#fef8e1] rounded-2xl px-4 py-1">
+        <%= f.text_field :specialty,
+              placeholder: "Ex: Ortodontia",
+              class: "w-full bg-transparent border-none outline-none py-3 text-sm",
+              style: "color: #3E2723" %>
+      </div>
     </div>
-  </div>
 
-  <div>
-    <%= f.label :birth_date, "Data de nascimento", class: "block text-xs font-medium mb-1 px-1", style: "color: #8D6E63" %>
-    <div class="bg-white rounded-2xl shadow-sm px-4 py-1">
-      <%= f.date_field :birth_date,
-            class: "w-full bg-transparent border-none outline-none py-3 text-sm",
-            style: "color: #3E2723" %>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="label">Data de nascimento</label>
+        <div class="bg-[#fef8e1] rounded-2xl px-4 py-1">
+          <%= f.date_field :birth_date,
+                class: "w-full bg-transparent border-none outline-none py-3 text-sm",
+                style: "color: #3E2723" %>
+        </div>
+      </div>
+      <div>
+        <label class="label">Contato</label>
+        <div class="bg-[#fef8e1] rounded-2xl px-4 py-1">
+          <%= f.telephone_field :phone, autocomplete: "tel",
+                placeholder: "+55",
+                class: "w-full bg-transparent border-none outline-none py-3 text-sm",
+                style: "color: #3E2723" %>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div class="flex gap-3 pt-2">
-    <%= link_to "Cancelar", perfil_path, class: "btn-outline flex-1 text-center" %>
-    <%= f.submit "Salvar alterações", class: "btn-primary flex-1 cursor-pointer" %>
-  </div>
+    <div>
+      <label class="label">E-mail</label>
+      <div class="bg-[#fef8e1] rounded-2xl px-4 py-1 opacity-60">
+        <input type="email" readonly
+               value="<%= @user.email %>"
+               class="w-full bg-transparent border-none outline-none py-3 text-sm"
+               style="color: #3E2723">
+      </div>
+    </div>
 
+    <%= f.submit "Salvar alterações", class: "btn-primary w-full cursor-pointer mt-2" %>
+
+  <% end %>
+</div>
+
+<%# Sair da conta %>
+<div class="mt-4">
+  <button type="button" onclick="<%= open_modal('logout-modal') %>"
+          class="w-full py-3 rounded-full text-sm font-medium cursor-pointer flex items-center justify-center gap-2"
+          style="border: 1px solid #d4183d; color: #d4183d; background: transparent">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+         stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+    </svg>
+    Sair da conta
+  </button>
+</div>
+
+<%# Modal Logout %>
+<%= render layout: "shared/modal", locals: { id: "logout-modal", title: "Tem certeza que deseja sair?" } do %>
+  <div class="flex gap-3">
+    <button type="button" onclick="this.closest('dialog').close()"
+            class="btn-outline flex-1 cursor-pointer">
+      Cancelar
+    </button>
+    <%= button_to destroy_user_session_path, method: :delete,
+          class: "btn-primary flex-1 cursor-pointer" do %>
+      Sair
+    <% end %>
+  </div>
 <% end %>

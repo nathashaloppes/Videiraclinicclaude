@@ -1,5 +1,26 @@
 <% content_for :title, "Videira Dental — Agende sua sala" %>
 
+<%# ── Menu 2x2 ─────────────────────────────────────────────────────────────── %>
+<% if user_signed_in? %>
+  <div class="grid grid-cols-2 gap-3 mb-6">
+    <%= link_to edit_perfil_path,
+          class: "bg-white rounded-2xl shadow-sm p-5 flex items-center justify-center active:scale-[0.98] transition-all" do %>
+      <span class="text-sm font-medium uppercase tracking-wide" style="color: #5D4037">Cadastro</span>
+    <% end %>
+    <%= link_to reservas_path,
+          class: "bg-white rounded-2xl shadow-sm p-5 flex items-center justify-center active:scale-[0.98] transition-all" do %>
+      <span class="text-sm font-medium uppercase tracking-wide" style="color: #5D4037">Reservas</span>
+    <% end %>
+    <%= link_to carteira_path,
+          class: "bg-white rounded-2xl shadow-sm p-5 flex items-center justify-center active:scale-[0.98] transition-all" do %>
+      <span class="text-sm font-medium uppercase tracking-wide" style="color: #5D4037">Carteira</span>
+    <% end %>
+    <div class="bg-white rounded-2xl shadow-sm p-5 flex items-center justify-center">
+      <span class="text-sm font-medium uppercase tracking-wide" style="color: #5D4037">Videira Shop</span>
+    </div>
+  </div>
+<% end %>
+
 <% min_date = Date.tomorrow %>
 <% max_date = min_date + 90.days %>
 
@@ -29,7 +50,6 @@
   <dialog data-calendar-target="dialog"
           data-action="click->calendar#backdropClose"
           class="p-5">
-    <%# Month header %>
     <div class="flex items-center justify-between mb-4">
       <button type="button" data-action="click->calendar#prev"
               class="p-1 rounded-full hover:bg-[#fef8e1]" style="color:#8D6E63">‹</button>
@@ -37,9 +57,7 @@
       <button type="button" data-action="click->calendar#next"
               class="p-1 rounded-full hover:bg-[#fef8e1]" style="color:#8D6E63">›</button>
     </div>
-    <%# Calendar grid (rendered by Stimulus) %>
     <div data-calendar-target="grid"></div>
-    <%# Close button %>
     <button type="button" data-action="click->calendar#close"
             class="mt-4 w-full text-xs py-2 rounded-full border text-center"
             style="border-color:#E0E0E0; color:#8D6E63">
@@ -97,23 +115,25 @@
 </div>
 
 <%# ── Day header ─────────────────────────────────────────────────────────── %>
-<h2 class="text-sm font-medium uppercase tracking-wide mb-4" style="color: #5D4037">
-  <%= l(@date, format: "%A, %d/%m").upcase %>
-</h2>
+<div class="bg-white rounded-2xl shadow-sm px-4 py-4 mb-4">
+  <h2 class="text-sm font-medium uppercase tracking-wide mb-4" style="color: #5D4037">
+    <%= l(@date, format: "%A, %d/%m").upcase %>
+  </h2>
 
-<%# ── Slot list ───────────────────────────────────────────────────────────── %>
-<% if @availabilities.empty? %>
-  <div class="empty-state">
-    <p>Nenhum horário disponível para esta data.</p>
-    <p class="mt-1">Tente outro dia no calendário.</p>
-  </div>
-<% else %>
-  <div id="availability-grid" class="flex flex-col gap-3">
-    <% @availabilities.each do |av| %>
-      <%= render "shared/slot_card", availability: av %>
-    <% end %>
-  </div>
-<% end %>
+  <%# ── Slot list ─────────────────────────────────────────────────────────── %>
+  <% if @availabilities.empty? %>
+    <div class="empty-state">
+      <p>Nenhum horário disponível para esta data.</p>
+      <p class="mt-1">Tente outro dia no calendário.</p>
+    </div>
+  <% else %>
+    <div id="availability-grid" class="flex flex-col gap-3">
+      <% @availabilities.each do |av| %>
+        <%= render "shared/slot_card", availability: av %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
 
 <%# ── Cart footer (Turbo Frame) ───────────────────────────────────────────── %>
 <%= turbo_frame_tag "cart-summary" do %>

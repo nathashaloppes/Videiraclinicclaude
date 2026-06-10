@@ -36,4 +36,23 @@ class PaymentConfirmer < ApplicationService
   rescue => e
     log_error("broadcast failed: #{e.message}")
   end
+
+  public
+
+  # Confirma a partir do payload do webhook InfinitePay.
+  # order_nsu = booking_group.id (passamos ao criar o checkout)
+  def self.call_from_webhook(payload)
+    order_nsu = payload["order_nsu"]
+    return unless order_nsu.present? && payload["capture_method"] == "pix"
+
+    result = call(external_reference: order_nsu)
+
+    # Atualiza gateway_id com o transaction_nsu retornado pelo webhook
+    if result.success? && payload["transaction_nsu"].present?
+      group = BookingGroup.find_by(id: order_nsu)
+      group&.payment&.update_columns(gateway_id: payload["transaction_nsu"])
+    end
+
+    result
+  end
 end

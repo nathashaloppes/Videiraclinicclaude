@@ -5,14 +5,12 @@ RSpec.describe "Scheduling::Bookings", type: :request do
   let(:dentist) { create(:user, :dentist, clinic: clinic) }
   let(:av)      { create(:availability, clinic: clinic) }
 
-  let(:pix_result) do
+  let(:checkout_result) do
     ApplicationService::Result.new(
       success: true,
       value: {
-        gateway_id:  "SANDBOX_1",
-        pix_qr_code: "00020...",
-        pix_qr_url:  "",
-        expires_at:  30.minutes.from_now
+        checkout_url: "https://checkout.infinitepay.io/test123",
+        expires_at:   30.minutes.from_now
       },
       error: nil
     )
@@ -20,7 +18,7 @@ RSpec.describe "Scheduling::Bookings", type: :request do
 
   before do
     sign_in dentist
-    allow(MercadoPago::PixCreator).to receive(:call).and_return(pix_result)
+    allow(InfinitePay::CheckoutCreator).to receive(:call).and_return(checkout_result)
   end
 
   describe "GET /reservas/confirmar" do

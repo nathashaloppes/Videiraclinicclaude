@@ -1,74 +1,265 @@
 <% content_for :title, @user.name %>
 
-<%= render "shared/back_button", path: admin_users_path %>
+<%# Header: back + nome + editar %>
+<div class="flex items-center justify-between mb-4">
+  <%= render "shared/back_button", path: admin_users_path %>
+  <h1 class="text-base font-medium" style="color: #3E2723"><%= @user.name %></h1>
+  <button type="button" onclick="<%= open_modal('edit-user-modal') %>"
+          class="p-1.5 cursor-pointer">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+         stroke="currentColor" stroke-width="1.5" style="color: #8D6E63">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+    </svg>
+  </button>
+</div>
 
-<div class="bg-white rounded-3xl shadow-lg p-6 mb-4">
-  <div class="flex items-center gap-3 mb-5">
-    <%= render "shared/avatar", user: @user, size: "lg" %>
-    <div>
-      <h1 class="text-xl font-medium text-vdc-primary"><%= @user.name %></h1>
-      <span class="text-xs px-2 py-0.5 rounded-full <%= @user.owner? ? 'bg-vdc-background text-vdc-primary' : 'badge-neutral' %>">
-        <%= @user.role %>
-      </span>
+<%# Avatar %>
+<div class="flex justify-center mb-4">
+  <%= render "shared/avatar", user: @user, size: "lg" %>
+</div>
+
+<%# Informações com ícones %>
+<div class="bg-white rounded-2xl shadow-sm p-4 mb-4 flex flex-col gap-3">
+  <% if @user.cro.present? %>
+    <div class="flex items-center gap-3 text-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="1.5" style="color: #8D6E63">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+      </svg>
+      <span style="color: #3E2723"><%= @user.cro %></span>
     </div>
-    <button type="button" onclick="<%= open_modal('edit-user-modal') %>"
-            class="btn-sm-outline ml-auto cursor-pointer">
-      Editar
-    </button>
-  </div>
-
-  <div class="flex flex-col gap-0">
-    <%= detail_row "E-mail",     @user.email %>
-    <%= detail_row "Telefone",   @user.phone.present? ? format_phone(@user.phone) : nil %>
-    <%= detail_row "CPF",        @user.cpf.present? ? format_cpf(@user.cpf) : nil %>
-    <%= detail_row "Nascimento", @user.birth_date ? l(@user.birth_date, format: :default) : nil %>
-    <%= detail_row "Cadastro",   l(@user.created_at, format: :default) %>
-    <%= detail_row "Login via",  @user.provider&.humanize || "Email/senha", border: false %>
+  <% end %>
+  <% if @user.specialty.present? %>
+    <div class="flex items-center gap-3 text-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="1.5" style="color: #8D6E63">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+      </svg>
+      <span style="color: #3E2723"><%= @user.specialty %></span>
+    </div>
+  <% end %>
+  <% if @user.birth_date.present? %>
+    <div class="flex items-center gap-3 text-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="1.5" style="color: #8D6E63">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+      </svg>
+      <span style="color: #3E2723">Nascida em <%= l(@user.birth_date, format: "%d/%m/%Y") %></span>
+    </div>
+  <% end %>
+  <% if @user.phone.present? %>
+    <div class="flex items-center gap-3 text-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="1.5" style="color: #8D6E63">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+      </svg>
+      <span style="color: #3E2723"><%= @user.phone %></span>
+    </div>
+  <% end %>
+  <div class="flex items-center gap-3 text-sm">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24"
+         stroke="currentColor" stroke-width="1.5" style="color: #8D6E63">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+    </svg>
+    <span style="color: #3E2723"><%= @user.email %></span>
   </div>
 </div>
 
-<div class="bg-white rounded-2xl shadow-sm p-5 mb-4">
-  <h2 class="font-medium mb-4 text-vdc-primary">Últimas reservas</h2>
+<%# Carteira do cliente %>
+<% credit_cents = Credit.balance_for(user: @user, clinic: current_user.clinic) %>
+<div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
+  <h2 class="font-medium mb-3 text-sm" style="color: #5D4037">Carteira do cliente</h2>
+  <div class="flex items-center gap-3 mb-3">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24"
+         stroke="currentColor" stroke-width="1.5" style="color: #8D6E63">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M21 12V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2v-5z"/>
+      <path stroke-linecap="round" stroke-linejoin="round" d="M16 12a1 1 0 100 2 1 1 0 000-2z"/>
+    </svg>
+    <div>
+      <p class="text-xs" style="color: #8D6E63">Saldo disponível</p>
+      <p class="text-lg font-medium" style="color: #5D4037">R$ <%= money(credit_cents) %></p>
+    </div>
+  </div>
+  <div class="flex gap-2">
+    <button type="button" onclick="<%= open_modal("add-credit-#{@user.id}") %>"
+            class="flex-1 py-2 rounded-full text-xs font-medium cursor-pointer"
+            style="background-color: #C9B8A8; color: #3E2723">
+      Adicionar crédito
+    </button>
+    <% if credit_cents > 0 %>
+      <button type="button" onclick="<%= open_modal("remove-credit-#{@user.id}") %>"
+              class="flex-1 py-2 rounded-full text-xs font-medium cursor-pointer border"
+              style="border-color: #d4183d; color: #d4183d; background: transparent">
+        Excluir crédito
+      </button>
+    <% end %>
+  </div>
+</div>
+
+<%# Histórico de transações %>
+<div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="font-medium text-sm" style="color: #5D4037">Histórico de transações</h2>
+    <button type="button" onclick="<%= open_modal("add-booking-#{@user.id}") %>"
+            class="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full cursor-pointer"
+            style="background-color: #E0E0E0; color: #5D4037">
+      + Adicionar
+    </button>
+  </div>
   <% if @booking_groups.empty? %>
-    <p class="text-sm text-vdc-secondary">Sem reservas.</p>
+    <p class="text-sm" style="color: #8D6E63">Sem transações.</p>
   <% else %>
-    <div class="flex flex-col gap-3">
-      <% @booking_groups.each do |group| %>
-        <div class="flex items-center justify-between text-sm">
+    <div class="flex flex-col gap-0">
+      <% @booking_groups.each_with_index do |group, i| %>
+        <div class="flex items-center justify-between py-3 <%= i > 0 ? 'border-t' : '' %>"
+             style="border-color: #F5F5F5">
           <div>
-            <span class="<%= booking_group_status_badge(group.status) %>">
-              <%= t("booking_group.status.#{group.status}") %>
-            </span>
-            <span class="text-xs ml-2 text-vdc-secondary">
-              <%= pluralize(group.bookings.size, "horário", "horários") %> · <%= l(group.created_at, format: :default) %>
-            </span>
+            <p class="text-sm" style="color: #3E2723">
+              <%= l(group.created_at.to_date, format: "%A, %-d de %B") %>
+            </p>
+            <% group.bookings.each do |b| %>
+              <p class="text-xs" style="color: #8D6E63">
+                , <%= b.availability.starts_at.strftime("%H:%M") %> às <%= b.availability.ends_at.strftime("%H:%M") %>
+              </p>
+            <% end %>
           </div>
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-vdc-primary">R$ <%= money(group.total_cents) %></span>
-            <%= link_to "Ver", admin_booking_path(group), class: "btn-xs-outline" %>
-          </div>
+          <span class="text-sm font-medium" style="color: #5D4037">
+            R$ <%= money(group.total_cents) %>
+          </span>
         </div>
       <% end %>
     </div>
   <% end %>
 </div>
 
-<% unless @versions.empty? %>
-  <div class="bg-white rounded-2xl shadow-sm p-5">
-    <h2 class="font-medium mb-4 text-vdc-primary">Histórico</h2>
-    <div class="flex flex-col gap-3">
-      <% @versions.each do |v| %>
-        <div class="text-xs border-l-2 pl-3 border-vdc-accent">
-          <p class="font-medium text-vdc-foreground"><%= v.event %></p>
-          <p class="text-vdc-secondary"><%= l(v.created_at, format: :default) %></p>
-          <p class="text-vdc-secondary">Por: <%= v.whodunnit&.truncate(20) || "sistema" %></p>
-        </div>
-      <% end %>
+<%# Apagar cliente %>
+<div class="mb-6">
+  <button type="button" onclick="<%= open_modal("delete-user-#{@user.id}") %>"
+          class="w-full py-3 rounded-full text-sm font-medium cursor-pointer"
+          style="border: 1px solid #d4183d; color: #d4183d; background: transparent">
+    Apagar cliente
+  </button>
+</div>
+
+<%# Modal: Editar informações %>
+<%= render layout: "shared/modal", locals: { id: "edit-user-modal", title: "+ Alterar informações" } do %>
+  <div class="flex justify-center mb-4">
+    <%= render "shared/avatar", user: @user, size: "md" %>
+  </div>
+  <%= render "admin/users/edit_form", user: @user %>
+<% end %>
+
+<%# Modal: Adicionar crédito %>
+<%= render layout: "shared/modal", locals: { id: "add-credit-#{@user.id}", title: "Adicionar Crédito" } do %>
+  <%= form_with url: add_credit_admin_user_path(@user), method: :post, data: { turbo: false }, class: "flex flex-col gap-4" do %>
+    <div>
+      <label class="label">Valor</label>
+      <div class="bg-[#fef8e1] rounded-2xl px-4 py-1">
+        <input type="number" name="amount" step="0.01" min="0.01" placeholder="R$ 0,00"
+               class="w-full bg-transparent border-none outline-none py-3 text-sm"
+               style="color: #3E2723">
+      </div>
     </div>
+    <div class="flex gap-3">
+      <button type="button" onclick="this.closest('dialog').close()"
+              class="btn-outline flex-1 cursor-pointer">Cancelar</button>
+      <button type="submit" class="btn-primary flex-1 cursor-pointer">Adicionar</button>
+    </div>
+  <% end %>
+<% end %>
+
+<%# Modal: Excluir crédito %>
+<% if credit_cents > 0 %>
+  <%= render layout: "shared/modal", locals: { id: "remove-credit-#{@user.id}", title: "Excluir Crédito" } do %>
+    <p class="text-sm mb-3" style="color: #8D6E63">
+      Crédito disponível: R$ <%= money(credit_cents) %>
+    </p>
+    <%= form_with url: remove_credit_admin_user_path(@user), method: :delete, data: { turbo: false }, class: "flex flex-col gap-4" do %>
+      <div>
+        <label class="label">Valor a excluir</label>
+        <div class="bg-[#fef8e1] rounded-2xl px-4 py-1">
+          <input type="number" name="amount" step="0.01" min="0.01"
+                 max="<%= (credit_cents / 100.0).round(2) %>"
+                 placeholder="R$ 0,00"
+                 class="w-full bg-transparent border-none outline-none py-3 text-sm"
+                 style="color: #3E2723">
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <button type="button" onclick="this.closest('dialog').close()"
+                class="btn-outline flex-1 cursor-pointer">Cancelar</button>
+        <button type="submit"
+                class="flex-1 py-3 rounded-full text-sm font-medium cursor-pointer text-white"
+                style="background-color: #d4183d">
+          Excluir
+        </button>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>
+
+<%# Modal: Confirmar apagar cliente %>
+<%= render layout: "shared/modal", locals: { id: "delete-user-#{@user.id}", title: "Tem certeza que deseja apagar cliente?" } do %>
+  <div class="flex gap-3">
+    <button type="button" onclick="this.closest('dialog').close()"
+            class="btn-outline flex-1 cursor-pointer">Cancelar</button>
+    <%= button_to admin_user_path(@user), method: :delete,
+          class: "btn-primary flex-1 cursor-pointer" do %>
+      Excluir
+    <% end %>
   </div>
 <% end %>
 
-<%# ── Modal: Editar dentista ──────────────────────────────────────────────── %>
-<%= render layout: "shared/modal", locals: { id: "edit-user-modal", title: "Editar dentista" } do %>
-  <%= render "admin/users/edit_form", user: @user %>
+<%# Modal: Adicionar reserva (turno) %>
+<%= render layout: "shared/modal", locals: { id: "add-booking-#{@user.id}", title: "+ Adicionar turno" } do %>
+  <p class="text-xs mb-3" style="color: #8D6E63">
+    Selecione a data e o turno para adicionar ao cliente.
+  </p>
+  <div class="flex flex-col gap-3">
+    <div>
+      <label class="label">Período</label>
+      <div class="bg-[#fef8e1] rounded-2xl px-4 py-1">
+        <select class="w-full bg-transparent border-none outline-none py-3 text-sm cursor-pointer"
+                style="color: #3E2723">
+          <option value="">Selecione um período</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <label class="label">Início e Fim</label>
+      <div class="flex items-center gap-2">
+        <div class="bg-[#fef8e1] rounded-2xl px-4 py-1 flex-1">
+          <input type="time" value="18:00"
+                 class="w-full bg-transparent border-none outline-none py-3 text-sm"
+                 style="color: #3E2723">
+        </div>
+        <span class="text-sm" style="color:#8D6E63">-</span>
+        <div class="bg-[#fef8e1] rounded-2xl px-4 py-1 flex-1">
+          <input type="time" value="19:00"
+                 class="w-full bg-transparent border-none outline-none py-3 text-sm"
+                 style="color: #3E2723">
+        </div>
+      </div>
+    </div>
+    <div>
+      <label class="label">Valor</label>
+      <div class="bg-[#fef8e1] rounded-2xl px-4 py-1">
+        <input type="number" step="0.01" min="0" placeholder="R$ 0,00"
+               class="w-full bg-transparent border-none outline-none py-3 text-sm"
+               style="color: #3E2723">
+      </div>
+    </div>
+    <button type="button"
+            class="w-full py-3 rounded-full text-sm font-medium"
+            style="background-color: #C9B8A8; color: #3E2723">
+      Salvar
+    </button>
+  </div>
 <% end %>
