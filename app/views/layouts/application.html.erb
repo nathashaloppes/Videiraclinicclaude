@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
   <head>
-    <title><%= content_for(:title) || "Videira Dental" %></title>
+    <title><%= content_for(:title) || "Videira Clinic" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
     <%# Preview ao compartilhar o link (WhatsApp, redes sociais, Google) %>
-    <% og_title = content_for(:title) || "Videira Dental — Agende sua sala" %>
-    <% og_description = content_for(:meta_description) || "Agende sua consulta na Videira Dental de forma rápida e online." %>
+    <% og_title = content_for(:title) || "Videira Clinic — Agende sua sala" %>
+    <% og_description = content_for(:meta_description) || "Agende sua consulta na Videira Clinic de forma rápida e online." %>
     <meta property="og:type" content="website">
-    <meta property="og:site_name" content="Videira Dental">
+    <meta property="og:site_name" content="Videira Clinic">
     <meta property="og:locale" content="pt_BR">
     <meta property="og:title" content="<%= og_title %>">
     <meta property="og:description" content="<%= og_description %>">
