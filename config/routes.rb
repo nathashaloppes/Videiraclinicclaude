@@ -23,6 +23,11 @@ Rails.application.routes.draw do
   resource :perfil, only: [:edit, :update], controller: "users/profiles",
     path_names: { edit: "editar" }
 
+  # Completar cadastro (ex.: após login com Google)
+  resource :completar_cadastro, only: [:show, :update],
+    controller: "users/profile_completions", path: "completar-cadastro",
+    as: :profile_completion
+
   resource :carteira, only: [:show], controller: "users/wallets"
   resources :recargas, only: [:create], controller: "users/credit_purchases"
 
