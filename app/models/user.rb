@@ -31,6 +31,13 @@ class User < ApplicationRecord
 
   scope :dentists, -> { where(role: "dentist") }
 
+  # Cadastro completo: dentistas precisam de CPF, CRO e telefone preenchidos.
+  # (Cadastro via Google não coleta esses dados, então exigimos depois.)
+  def profile_complete?
+    return true unless dentist?
+    cpf.present? && cro.present? && phone.present?
+  end
+
   def self.from_omniauth(auth)
     return nil if auth.info.email.blank?
 
