@@ -29,7 +29,7 @@ gem "sidekiq-cron"
 gem "connection_pool", "~> 2.5"
 
 # Image processing
-gem "image_processing", "~> 1.2"
+gem "image_processing", "~> 2.0"
 
 # Pagination
 gem "pagy", "~> 8.0"
