@@ -86,6 +86,22 @@ if dentist && Credit.where(user: dentist, clinic: clinic).none?
   puts "  Crédito demo: R$ 50,00 para #{dentist.email}"
 end
 
+# ── Turnos padrão (recorrentes) ──────────────────────────────────────────────
+# Cria os modelos a partir do dia já configurado mais completo (uma vez) e
+# materializa os turnos para os próximos dias. Idempotente.
+if clinic.shift_templates.none?
+  best_date = clinic.availabilities.where("date >= ?", Date.current)
+                    .group(:date).count.max_by { |_, c| c }&.first
+  if best_date
+    clinic.availabilities.where(date: best_date).order(:starts_at)
+          .pluck(:starts_at, :ends_at, :price_cents).uniq.each do |s, e, pc|
+      clinic.shift_templates.create!(starts_at: s, ends_at: e, price_cents: pc)
+    end
+  end
+end
+RecurringShifts::Generator.advance(clinic)
+puts "  Turnos padrão: #{clinic.shift_templates.count} | gerados até #{clinic.reload.shifts_generated_until}"
+
 puts "\nSeed concluído!"
 puts "  owner:   #{owner_email} | #{senha}"
 puts "  dentist: dentista@videiradental.com.br | #{senha}"

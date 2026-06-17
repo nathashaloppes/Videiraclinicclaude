@@ -87,6 +87,9 @@ Rails.application.routes.draw do
     resources :availabilities, except: [:show] do
       member { patch :toggle }
     end
+    resources :shift_templates, only: [:index, :create, :destroy], path: "turnos-padrao" do
+      member { patch :toggle }
+    end
     resources :discount_rules, except: [:show]
     resources :bookings,       only: [:index, :show, :create] do
       member do

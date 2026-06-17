@@ -1,11 +1,19 @@
 <% content_for :title, "Turnos" %>
 
-<div class="flex items-center justify-between mb-4">
+<div class="flex items-center justify-between mb-1">
   <h1 class="text-xl font-medium" style="color: #5D4037">Turnos</h1>
   <button type="button" onclick="<%= open_modal('add-turno-modal') %>"
           class="btn-sm-primary cursor-pointer flex items-center gap-1">
     + Adicionar
   </button>
+</div>
+
+<div class="mb-4">
+  <%= link_to admin_shift_templates_path,
+        class: "inline-flex items-center gap-1 text-xs font-medium underline",
+        style: "color: #8D6E63" do %>
+    ⚙ Turnos padrão (repetem todos os dias automaticamente)
+  <% end %>
 </div>
 
 <% min_date = Date.current %>

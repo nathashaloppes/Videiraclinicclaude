@@ -2,6 +2,7 @@ class Clinic < ApplicationRecord
   has_many :users
   has_many :services
   has_many :availabilities
+  has_many :shift_templates
   has_many :discount_rules
   has_many :booking_groups
   has_many :payments
