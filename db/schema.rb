@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_06_17_120000) do
+ActiveRecord::Schema[7.2].define(version: 2026_06_17_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -106,6 +106,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_17_120000) do
     t.string "logo_url"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.date "shifts_generated_until"
     t.index ["cnpj"], name: "index_clinics_on_cnpj", unique: true
   end
 
@@ -193,6 +194,17 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_17_120000) do
     t.check_constraint "price_cents >= 0", name: "services_price_non_negative"
   end
 
+  create_table "shift_templates", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "clinic_id", null: false
+    t.time "starts_at", null: false
+    t.time "ends_at", null: false
+    t.integer "price_cents", default: 0, null: false
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["clinic_id"], name: "index_shift_templates_on_clinic_id"
+  end
+
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "clinic_id"
     t.string "name", null: false
@@ -259,5 +271,6 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_17_120000) do
   add_foreign_key "payments", "booking_groups"
   add_foreign_key "payments", "clinics"
   add_foreign_key "services", "clinics"
+  add_foreign_key "shift_templates", "clinics"
   add_foreign_key "users", "clinics"
 end
