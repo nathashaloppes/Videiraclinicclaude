@@ -101,7 +101,7 @@
 
 <%# ── Modais: alterar reserva por grupo ──────────────────────────────────── %>
 <% @booking_groups.each do |group| %>
-  <%= render layout: "shared/modal", locals: { id: "edit-booking-#{group.id}", title: "Alterar reserva" } do %>
+  <%= render layout: "shared/modal", locals: { id: "edit-booking-#{group.id}", title: "Alterar reserva", closable: true } do %>
     <div class="flex items-center gap-3 mb-4 pb-3 border-b" style="border-color: #E0E0E0">
       <%= render "shared/avatar", user: group.dentist, size: "sm" %>
       <div>
