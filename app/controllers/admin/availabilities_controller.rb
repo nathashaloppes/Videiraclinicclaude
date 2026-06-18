@@ -5,6 +5,7 @@ class Admin::AvailabilitiesController < Admin::BaseController
     @date = params[:date].present? ? Date.parse(params[:date]) : Date.current
     @availabilities = current_clinic.availabilities
       .where(date: @date)
+      .where(eclipsed_by_id: nil) # esconde turnos desativados por colisão de reserva
       .to_a
       .sort_by { |a| a.starts_at.strftime("%H:%M") } # ordena pelo horário local exibido
     @dentists = User.dentists.where(clinic: current_clinic).order(:name)

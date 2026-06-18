@@ -20,6 +20,10 @@ class AdminBookingGroupCreator < ApplicationService
         return failure("Um ou mais horários não estão mais disponíveis.")
       end
 
+      if availabilities.combination(2).any? { |a, b| a.overlaps?(b) }
+        return failure("Há horários selecionados que se sobrepõem. Remova um deles.")
+      end
+
       total = availabilities.sum(&:price_cents)
 
       group = BookingGroup.create!(

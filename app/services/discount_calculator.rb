@@ -9,8 +9,8 @@ class DiscountCalculator < ApplicationService
 
     availabilities = Availability.where(id: @availability_ids, clinic: @clinic, status: "available")
     subtotal_cents  = availabilities.sum(&:price_cents)
-    # "Hora Avulsa" não conta para desconto: nem no mínimo de turnos, nem no valor.
-    discountable    = availabilities.reject(&:avulsa?)
+    # "Hora Avulsa" e "Diária" não contam para desconto: nem no mínimo, nem no valor.
+    discountable    = availabilities.reject { |a| a.avulsa? || a.diaria? }
     rule            = DiscountRule.best_for(@clinic.id, discountable.size)
     # Desconto é por turno: valor fixo × turnos elegíveis (limitado ao subtotal).
     discount_cents  = rule ? [rule.discount_cents * discountable.size, subtotal_cents].min : 0

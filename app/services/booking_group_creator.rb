@@ -35,6 +35,10 @@ class BookingGroupCreator < ApplicationService
         raise SlotUnavailableError, "Um ou mais horários foram reservados por outra pessoa."
       end
 
+      if availabilities.combination(2).any? { |a, b| a.overlaps?(b) }
+        raise SlotUnavailableError, "Há horários selecionados que se sobrepõem. Remova um deles."
+      end
+
       group = BookingGroup.create!(
         clinic:         @clinic,
         dentist:        @user,

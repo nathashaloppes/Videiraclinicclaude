@@ -16,7 +16,7 @@ class Availability < ApplicationRecord
                           numericality: { greater_than_or_equal_to: 0 }
 
   validate :ends_after_starts
-  validate :no_overlapping_slots
+  validate :no_overlapping_slots, on: :create
   validate :not_in_the_past, on: :create
 
   enum :status, {
@@ -25,6 +25,10 @@ class Availability < ApplicationRecord
     cancelled:  "cancelled",
     blocked:    "blocked"
   }
+
+  # Quando um turno é reservado, desativa os que colidem; quando volta a ficar
+  # livre (cancelamento/expiração), reativa os que ele havia eclipsado.
+  after_update :sync_collisions, if: :saved_change_to_status?
 
   scope :available, -> { where(status: "available") }
   scope :future,    -> { where("date >= ?", Date.current) }
@@ -69,6 +73,14 @@ class Availability < ApplicationRecord
     "#{starts_at.strftime("%H:%M")}–#{ends_at.strftime("%H:%M")}"
   end
 
+  # Dois turnos do mesmo dia se sobrepõem no horário?
+  def overlaps?(other)
+    return false unless date == other.date && starts_at && ends_at && other.starts_at && other.ends_at
+    s1, e1 = slot_minutes
+    s2, e2 = other.slot_minutes
+    s1 < e2 && s2 < e1
+  end
+
   def cancellable?
     return false if cancelled?
     slot_start = Time.zone.local(date.year, date.month, date.day,
@@ -85,6 +97,47 @@ class Availability < ApplicationRecord
 
   private
 
+  # Após mudança de status: reservado eclipsa os que colidem; liberado reativa-os.
+  def sync_collisions
+    before, after = saved_change_to_status
+    if after == "booked"
+      eclipse_overlapping!
+    elsif after == "available" && before == "booked"
+      release_eclipsed!
+    end
+  end
+
+  # Desativa (status "blocked") os turnos livres que colidem com este, marcando
+  # quem os eclipsou para poder reativá-los depois.
+  def eclipse_overlapping!
+    clinic.availabilities
+      .where(date: date, status: "available")
+      .where.not(id: id)
+      .find_each do |other|
+        next unless overlaps?(other)
+        other.update_columns(status: "blocked", eclipsed_by_id: id, updated_at: Time.current)
+      end
+  end
+
+  # Reativa os turnos que este havia eclipsado — a menos que ainda colidam com
+  # outra reserva ativa (nesse caso, mantém bloqueado sob o novo "dono").
+  def release_eclipsed!
+    clinic.availabilities
+      .where(eclipsed_by_id: id, status: "blocked")
+      .find_each do |other|
+        blocker = clinic.availabilities
+          .where(date: other.date, status: "booked")
+          .where.not(id: other.id)
+          .detect { |b| other.overlaps?(b) }
+
+        if blocker
+          other.update_columns(eclipsed_by_id: blocker.id, updated_at: Time.current)
+        else
+          other.update_columns(status: "available", eclipsed_by_id: nil, updated_at: Time.current)
+        end
+      end
+  end
+
   def not_in_the_past
     errors.add(:base, "Não é possível criar um turno com horário que já passou.") if past?
   end
@@ -99,6 +152,9 @@ class Availability < ApplicationRecord
 
   def no_overlapping_slots
     return unless date && starts_at && ends_at && clinic_id
+    # Diária pode coexistir com os turnos (manhã/tarde/noite); a colisão real é
+    # resolvida na reserva (o turno reservado desativa os que se sobrepõem).
+    return if diaria?
 
     s1, e1 = slot_minutes
     conflict = clinic.availabilities
@@ -106,6 +162,7 @@ class Availability < ApplicationRecord
       .where.not(id: id)
       .where.not(status: %w[cancelled])
       .any? do |other|
+        next false if other.diaria?
         s2, e2 = other.slot_minutes
         s1 < e2 && s2 < e1
       end

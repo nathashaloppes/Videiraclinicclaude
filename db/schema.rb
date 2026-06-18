@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_06_18_000000) do
+ActiveRecord::Schema[7.2].define(version: 2026_06_19_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -54,9 +54,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_18_000000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "price_cents", default: 0, null: false
+    t.uuid "eclipsed_by_id"
     t.index ["clinic_id"], name: "index_availabilities_on_clinic_id"
     t.index ["dentist_id", "date", "starts_at"], name: "idx_availabilities_no_double_booking", unique: true
     t.index ["dentist_id"], name: "index_availabilities_on_dentist_id"
+    t.index ["eclipsed_by_id"], name: "index_availabilities_on_eclipsed_by_id"
     t.index ["service_id"], name: "index_availabilities_on_service_id"
     t.check_constraint "status::text = ANY (ARRAY['available'::character varying, 'booked'::character varying, 'cancelled'::character varying, 'blocked'::character varying]::text[])", name: "availabilities_status_check"
   end
