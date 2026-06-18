@@ -54,7 +54,7 @@
                { label: "Videira Shop", path: "#", disabled: true },
              ].each do |item| %>
             <% if item[:disabled] %>
-              <div class="rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center text-center opacity-50 cursor-not-allowed"
+              <div class="rounded-2xl p-4 shadow-sm flex flex-col items-center justify-center text-center min-h-[72px] opacity-50 cursor-not-allowed"
                    style="background-color: #ffffff">
                 <span class="text-xs font-medium uppercase tracking-wide" style="color: #5D4037">
                   <%= item[:label] %>
@@ -64,7 +64,7 @@
             <% else %>
               <% active = current_page?(item[:path]) %>
               <%= link_to item[:path],
-                    class: "rounded-2xl p-4 shadow-sm hover:shadow-md transition-all active:scale-[0.98] flex items-center justify-center text-center min-h-[72px]",
+                    class: "rounded-2xl p-4 shadow-sm hover:shadow-md transition-all active:scale-[0.98] flex flex-col items-center justify-center text-center min-h-[72px]",
                     style: "background-color: #{active ? '#C9B8A8' : '#ffffff'}" do %>
                 <span class="text-xs font-medium uppercase tracking-wide" style="color: #5D4037">
                   <%= item[:label] %>
