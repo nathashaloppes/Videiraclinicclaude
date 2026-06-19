@@ -42,38 +42,6 @@ puts "  Dentist: dentista@videiradental.com.br"
 end
 puts "  Desconto: 2 regras criadas"
 
-# ── Availabilities (Aluguel de Sala) ────────────────────────────────────────
-# Limpa turnos sem reserva (idempotência durante desenvolvimento)
-Availability.where.not(status: "booked").destroy_all
-
-# 3 turnos fixos: Manhã / Tarde / Noite — preço por turno
-turnos = [
-  { starts: "07:00", ends: "12:00", price_cents: 17000, label: "Turno Manhã"    },
-  { starts: "13:00", ends: "18:00", price_cents: 17000, label: "Turno Tarde"    },
-  { starts: "19:00", ends: "22:00", price_cents: 12000, label: "Turno Noite"    },
-]
-
-# Cria para os próximos 30 dias (exceto domingos)
-30.times do |i|
-  date = Date.tomorrow + i.days
-  next if date.sunday?
-
-  turnos.each do |t|
-    next if Availability.exists?(clinic: clinic, date: date, starts_at: t[:starts])
-
-    Availability.create!(
-      clinic:      clinic,
-      date:        date,
-      starts_at:   t[:starts],
-      ends_at:     t[:ends],
-      price_cents: t[:price_cents],
-      status:      "available"
-    )
-  end
-end
-
-puts "  Turnos: #{Availability.count} criados"
-
 # ── Crédito de exemplo para a dentista demo ─────────────────────────────────
 dentist = User.find_by(email: "dentista@videiradental.com.br")
 if dentist && Credit.where(user: dentist, clinic: clinic).none?
@@ -87,24 +55,24 @@ if dentist && Credit.where(user: dentist, clinic: clinic).none?
 end
 
 # ── Turnos padrão (recorrentes) ──────────────────────────────────────────────
-# Cria os modelos a partir do dia já configurado mais completo (uma vez) e
-# materializa os turnos para os próximos dias. Idempotente e tolerante a falha
-# (não pode derrubar o deploy).
+# Fonte ÚNICA dos turnos: os modelos (ShiftTemplate), materializados pelo
+# generator. NÃO é destrutivo — não apaga turnos existentes; apenas completa a
+# janela de 90 dias de forma idempotente. Tolerante a falha (nunca derruba o
+# deploy). Na primeira vez (sem modelos), cria os padrões Manhã/Tarde/Noite.
 begin
   if clinic.shift_templates.none?
-    best_date = clinic.availabilities.where("date >= ?", Date.current)
-                      .group(:date).count.max_by { |_, c| c }&.first
-    if best_date
-      clinic.availabilities.where(date: best_date).order(:starts_at)
-            .pluck(:starts_at, :ends_at, :price_cents).uniq.each do |s, e, pc|
-        clinic.shift_templates.create!(starts_at: s, ends_at: e, price_cents: pc)
-      end
+    [
+      { starts: "07:00", ends: "12:00", price_cents: 17000 },
+      { starts: "13:00", ends: "18:00", price_cents: 17000 },
+      { starts: "19:00", ends: "22:00", price_cents: 12000 },
+    ].each do |t|
+      clinic.shift_templates.create!(starts_at: t[:starts], ends_at: t[:ends], price_cents: t[:price_cents])
     end
   end
   RecurringShifts::Generator.advance(clinic)
-  puts "  Turnos padrão: #{clinic.shift_templates.count} | gerados até #{clinic.reload.shifts_generated_until}"
+  puts "  Turnos padrão: #{clinic.shift_templates.count} modelos | gerados até #{clinic.reload.shifts_generated_until}"
 rescue => e
-  puts "  [aviso] backfill de turnos padrão pulado: #{e.class}: #{e.message}"
+  puts "  [aviso] geração de turnos padrão pulada: #{e.class}: #{e.message}"
 end
 
 puts "\nSeed concluído!"

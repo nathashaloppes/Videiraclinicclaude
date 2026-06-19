@@ -47,6 +47,9 @@ module RecurringShifts
       )
     rescue ActiveRecord::RecordNotUnique
       # corrida — outro processo já criou o mesmo turno
+    rescue => e
+      # nunca deixa um dia/turno problemático abortar a geração dos demais
+      Rails.logger.warn("[RecurringShifts] falha ao gerar turno #{date} #{template.starts_at}: #{e.class}: #{e.message}")
     end
   end
 end
