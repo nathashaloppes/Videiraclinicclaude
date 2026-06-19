@@ -46,6 +46,7 @@ Rails.application.routes.draw do
       end
       member do
         patch "cancelar", to: "bookings#cancel"
+        patch "alterar",  to: "bookings#change_slot"
       end
     end
   end

@@ -15,6 +15,14 @@ class Scheduling::BookingsController < ApplicationController
     end
 
     @pagy, @booking_groups = pagy(scope)
+
+    # Turnos livres (futuros) para o cliente trocar a reserva.
+    @available_slots = Availability.available
+      .where(clinic: current_user.clinic)
+      .where("date >= ?", Date.current)
+      .to_a
+      .reject(&:past?)
+      .sort_by { |a| [a.date, a.starts_at.strftime("%H:%M")] }
   end
 
   def show
@@ -93,6 +101,40 @@ class Scheduling::BookingsController < ApplicationController
       else
         redirect_to confirmar_reservas_path, alert: result.error
       end
+    end
+  end
+
+  def change_slot
+    group   = policy_scope(BookingGroup).find(params[:id])
+    booking = group.bookings.first
+
+    unless group.confirmed? || group.pending?
+      return redirect_to reservas_path, alert: "Esta reserva não pode ser alterada."
+    end
+    if group.bookings.size > 1
+      return redirect_to reservas_path, alert: "Reservas com múltiplos turnos não podem ser trocadas. Cancele e crie novamente."
+    end
+
+    lead = ENV.fetch("CANCELLATION_LEAD_HOURS", 48).to_i
+    unless booking.availability.cancellable?
+      return redirect_to reservas_path, alert: "Alterações só são permitidas com #{lead}h de antecedência."
+    end
+
+    new_av = Availability.available
+      .where(clinic: current_user.clinic)
+      .find_by(id: params[:availability_id])
+
+    result = AdminBookingSlotChanger.call(booking: booking, new_availability: new_av)
+
+    if result.success?
+      if result.value[:charge_created]
+        payment = result.value[:group].payments.order(:created_at).last
+        redirect_to pagamento_path(payment), notice: "Turno alterado! Conclua o pagamento da diferença via Pix."
+      else
+        redirect_to reservas_path, notice: "Turno alterado com sucesso."
+      end
+    else
+      redirect_to reservas_path, alert: result.error
     end
   end
 
