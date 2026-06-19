@@ -36,7 +36,11 @@ module RecurringShifts
     end
 
     def self.create_availability(clinic, template, date)
-      return if clinic.availabilities.where(date: date, starts_at: template.starts_at).exists?
+      # Dedup pelo intervalo completo: uma Diária (07–18) e a Manhã (07–12)
+      # compartilham o starts_at mas são turnos distintos.
+      return if clinic.availabilities
+                       .where(date: date, starts_at: template.starts_at, ends_at: template.ends_at)
+                       .exists?
 
       clinic.availabilities.create(
         date:        date,

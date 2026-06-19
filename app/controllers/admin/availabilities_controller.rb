@@ -7,7 +7,8 @@ class Admin::AvailabilitiesController < Admin::BaseController
       .where(date: @date)
       .where(eclipsed_by_id: nil) # esconde turnos desativados por colisão de reserva
       .to_a
-      .sort_by { |a| a.starts_at.strftime("%H:%M") } # ordena pelo horário local exibido
+      # Diárias primeiro, depois os demais — cada grupo ordenado por horário local.
+      .sort_by { |a| [a.diaria? ? 0 : 1, a.starts_at.strftime("%H:%M")] }
     @dentists = User.dentists.where(clinic: current_clinic).order(:name)
   rescue Date::Error
     redirect_to admin_availabilities_path, alert: "Data inválida."

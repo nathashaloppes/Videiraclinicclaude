@@ -3,7 +3,8 @@ class Admin::ShiftTemplatesController < Admin::BaseController
 
   def index
     @templates = current_clinic.shift_templates.to_a
-      .sort_by { |t| t.starts_at.strftime("%H:%M") } # ordena pelo horário local exibido
+      # Diárias primeiro, depois os demais — cada grupo ordenado por horário local.
+      .sort_by { |t| [t.diaria? ? 0 : 1, t.starts_at.strftime("%H:%M")] }
   end
 
   def create

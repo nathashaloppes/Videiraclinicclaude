@@ -13,7 +13,8 @@ class PagesController < ApplicationController
       .includes(:service, :dentist)
       .to_a
       .reject(&:past?)                              # esconde turnos cujo horário já passou
-      .sort_by { |a| a.starts_at.strftime("%H:%M") } # ordena pelo horário local exibido
+      # Diárias primeiro, depois os demais — cada grupo ordenado por horário local.
+      .sort_by { |a| [a.diaria? ? 0 : 1, a.starts_at.strftime("%H:%M")] }
   rescue Date::Error
     @date = min_date
     retry
