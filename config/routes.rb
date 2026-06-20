@@ -93,6 +93,7 @@ Rails.application.routes.draw do
     resources :shift_templates, only: [:index, :create, :destroy], path: "turnos-padrao" do
       member { patch :toggle }
     end
+    resources :extras, only: [:index, :create, :destroy], path: "servicos-extra"
     resources :discount_rules, except: [:show]
     resources :bookings,       only: [:index, :show, :create] do
       member do

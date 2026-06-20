@@ -47,7 +47,7 @@
           <span class="text-sm font-medium" style="color: #5D4037">
             R$ <%= money(extra.price_cents * qty) %>
           </span>
-          <%= button_to remove_extra_from_carrinho_path(extra_key: extra.key),
+          <%= button_to remove_extra_from_carrinho_path(extra_key: extra.id),
                 method: :delete, data: { turbo_stream: true },
                 class: "p-1.5 rounded-full cursor-pointer",
                 style: "background: transparent; color: #8D6E63" do %>

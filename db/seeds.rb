@@ -42,6 +42,12 @@ puts "  Dentist: dentista@videiradental.com.br"
 end
 puts "  Desconto: 2 regras criadas"
 
+# ── Serviços extra ──────────────────────────────────────────────────────────
+clinic.extras.find_or_create_by!(name: "Filmaker") do |e|
+  e.price_cents = 1000
+end
+puts "  Extras: #{clinic.extras.count}"
+
 # ── Crédito de exemplo para a dentista demo ─────────────────────────────────
 dentist = User.find_by(email: "dentista@videiradental.com.br")
 if dentist && Credit.where(user: dentist, clinic: clinic).none?

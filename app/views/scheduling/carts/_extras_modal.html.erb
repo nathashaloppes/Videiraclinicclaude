@@ -1,12 +1,16 @@
 <%= render layout: "shared/modal", locals: { id: "extras-modal", title: "Extras", closable: true } do %>
+  <% extras = (Current.clinic&.extras&.active&.ordered || []) %>
+  <% if extras.empty? %>
+    <p class="text-sm text-center py-2" style="color:#8D6E63">Nenhum serviço extra disponível.</p>
+  <% else %>
   <div class="flex flex-col gap-3">
-    <% Extra.all.each do |extra| %>
+    <% extras.each do |extra| %>
       <div class="bg-[#fef8e1] rounded-2xl p-4 flex items-center justify-between gap-3">
         <div class="min-w-0">
           <p class="text-sm font-medium" style="color:#3E2723"><%= extra.name %></p>
           <p class="text-sm font-medium mt-0.5" style="color:#5D4037">R$ <%= money(extra.price_cents) %></p>
         </div>
-        <%= button_to add_extra_to_carrinho_path(extra_key: extra.key),
+        <%= button_to add_extra_to_carrinho_path(extra_key: extra.id),
               method: :post, data: { turbo_stream: true },
               form: { class: "shrink-0" },
               class: "w-9 h-9 rounded-full flex items-center justify-center cursor-pointer",
@@ -20,4 +24,5 @@
       </div>
     <% end %>
   </div>
+  <% end %>
 <% end %>

@@ -89,7 +89,7 @@ class BookingGroupCreator < ApplicationService
 
   def serialized_extras
     @extras_list.map do |extra, qty|
-      { "key" => extra.key, "name" => extra.name, "price_cents" => extra.price_cents, "quantity" => qty }
+      { "id" => extra.id, "name" => extra.name, "price_cents" => extra.price_cents, "quantity" => qty }
     end
   end
 

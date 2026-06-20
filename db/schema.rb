@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_06_20_000000) do
+ActiveRecord::Schema[7.2].define(version: 2026_06_20_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -165,6 +165,16 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_20_000000) do
     t.check_constraint "min_slots > 0", name: "discount_rules_min_slots_positive"
   end
 
+  create_table "extras", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "clinic_id", null: false
+    t.string "name", null: false
+    t.integer "price_cents", default: 0, null: false
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["clinic_id"], name: "index_extras_on_clinic_id"
+  end
+
   create_table "payments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "clinic_id", null: false
     t.uuid "booking_group_id", null: false
@@ -272,6 +282,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_20_000000) do
   add_foreign_key "credits", "clinics"
   add_foreign_key "credits", "users"
   add_foreign_key "discount_rules", "clinics"
+  add_foreign_key "extras", "clinics"
   add_foreign_key "payments", "booking_groups"
   add_foreign_key "payments", "clinics"
   add_foreign_key "services", "clinics"

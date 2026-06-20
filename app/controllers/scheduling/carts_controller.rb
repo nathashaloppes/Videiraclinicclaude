@@ -32,10 +32,10 @@ class Scheduling::CartsController < ApplicationController
   end
 
   def add_extra
-    extra = Extra.find(params[:extra_key])
+    extra = Extra.active.find_by(id: params[:extra_key])
     if extra
       extras = cart_extras
-      extras[extra.key] = extras[extra.key].to_i + 1
+      extras[extra.id] = extras[extra.id].to_i + 1
       session[:cart_extras] = extras
     end
 
