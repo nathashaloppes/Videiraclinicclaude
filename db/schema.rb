@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_06_19_000000) do
+ActiveRecord::Schema[7.2].define(version: 2026_06_20_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -73,6 +73,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_06_19_000000) do
     t.string "status", default: "pending", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "extras", default: [], null: false
     t.index ["clinic_id"], name: "index_booking_groups_on_clinic_id"
     t.index ["dentist_id"], name: "index_booking_groups_on_dentist_id"
     t.index ["discount_rule_id"], name: "index_booking_groups_on_discount_rule_id"

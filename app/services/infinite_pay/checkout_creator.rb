@@ -45,6 +45,14 @@ module InfinitePay
         }
       end
 
+      Array(@group.extras).each do |extra|
+        items << {
+          quantity:    extra["quantity"].to_i,
+          price:       extra["price_cents"].to_i,
+          description: "Extra: #{extra["name"]}"
+        }
+      end
+
       payload = {
         handle:       ENV.fetch("INFINITEPAY_HANDLE"),
         items:        items,

@@ -31,8 +31,40 @@ class Scheduling::CartsController < ApplicationController
     end
   end
 
+  def add_extra
+    extra = Extra.find(params[:extra_key])
+    if extra
+      extras = cart_extras
+      extras[extra.key] = extras[extra.key].to_i + 1
+      session[:cart_extras] = extras
+    end
+
+    @cart_availabilities = cart_availabilities
+    respond_to do |format|
+      format.turbo_stream { render :extras_update }
+      format.html { redirect_back(fallback_location: carrinho_path) }
+    end
+  end
+
+  def remove_extra
+    extras = cart_extras
+    key = params[:extra_key].to_s
+    if extras[key]
+      extras[key] = extras[key].to_i - 1
+      extras.delete(key) if extras[key] <= 0
+      session[:cart_extras] = extras
+    end
+
+    @cart_availabilities = cart_availabilities
+    respond_to do |format|
+      format.turbo_stream { render :extras_update }
+      format.html { redirect_back(fallback_location: carrinho_path) }
+    end
+  end
+
   def destroy
     session.delete(:cart_ids)
+    session.delete(:cart_extras)
     redirect_back(fallback_location: root_path)
   end
 
@@ -40,6 +72,10 @@ class Scheduling::CartsController < ApplicationController
 
   def cart_ids
     @cart_ids ||= Array(session[:cart_ids])
+  end
+
+  def cart_extras
+    @cart_extras ||= (session[:cart_extras] || {}).to_h
   end
 
   def cart_availabilities

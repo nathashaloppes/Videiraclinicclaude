@@ -1,0 +1,23 @@
+<%= render layout: "shared/modal", locals: { id: "extras-modal", title: "Extras", closable: true } do %>
+  <div class="flex flex-col gap-3">
+    <% Extra.all.each do |extra| %>
+      <div class="bg-[#fef8e1] rounded-2xl p-4 flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-sm font-medium" style="color:#3E2723"><%= extra.name %></p>
+          <p class="text-sm font-medium mt-0.5" style="color:#5D4037">R$ <%= money(extra.price_cents) %></p>
+        </div>
+        <%= button_to add_extra_to_carrinho_path(extra_key: extra.key),
+              method: :post, data: { turbo_stream: true },
+              form: { class: "shrink-0" },
+              class: "w-9 h-9 rounded-full flex items-center justify-center cursor-pointer",
+              style: "background-color: #5D4037; color: #ffffff",
+              aria: { label: "Adicionar #{extra.name}" } do %>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+          </svg>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

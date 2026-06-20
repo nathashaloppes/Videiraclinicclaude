@@ -37,6 +37,8 @@ Rails.application.routes.draw do
       controller: "carts" do
       post   "adicionar/:availability_id", to: "carts#add",    as: :add_to
       delete "remover/:availability_id",   to: "carts#remove", as: :remove_from
+      post   "extras/:extra_key",          to: "carts#add_extra",    as: :add_extra_to
+      delete "extras/:extra_key",          to: "carts#remove_extra", as: :remove_extra_from
     end
 
     resources :reservas, only: [:index, :show], controller: "bookings" do

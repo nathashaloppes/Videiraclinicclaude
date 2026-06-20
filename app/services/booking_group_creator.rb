@@ -2,12 +2,14 @@ class BookingGroupCreator < ApplicationService
   class SlotUnavailableError < StandardError; end
   class PaymentError < StandardError; end
 
-  def initialize(user:, availability_ids:, credit_cents: nil)
+  def initialize(user:, availability_ids:, credit_cents: nil, extras: nil)
     @user             = user
     @availability_ids = Array(availability_ids)
     @clinic           = Availability.find_by(id: @availability_ids.first)&.clinic
     # nil = usar todo o crédito disponível; número = teto escolhido pelo cliente (0 = não usar)
     @requested_credit_cents = credit_cents
+    @extras_list      = Extra.from_session(extras)
+    @extras_total     = @extras_list.sum { |extra, qty| extra.price_cents * qty }
   end
 
   def call
@@ -39,13 +41,16 @@ class BookingGroupCreator < ApplicationService
         raise SlotUnavailableError, "Há horários selecionados que se sobrepõem. Remova um deles."
       end
 
+      order_total = pricing[:total_cents] + @extras_total
+
       group = BookingGroup.create!(
         clinic:         @clinic,
         dentist:        @user,
         discount_rule:  pricing[:discount_rule],
-        subtotal_cents: pricing[:subtotal_cents],
+        subtotal_cents: pricing[:subtotal_cents] + @extras_total,
         discount_cents: pricing[:discount_cents],
-        total_cents:    pricing[:total_cents],
+        total_cents:    order_total,
+        extras:         serialized_extras,
         status:         "pending"
       )
 
@@ -61,8 +66,8 @@ class BookingGroupCreator < ApplicationService
         av.update!(status: "booked")
       end
 
-      credits_applied = apply_available_credits(group, pricing[:total_cents])
-      amount_due      = pricing[:total_cents] - credits_applied
+      credits_applied = apply_available_credits(group, order_total)
+      amount_due      = order_total - credits_applied
 
       payment = if amount_due.zero?
         confirm_fully_credit_paid(group, credits_applied)
@@ -81,6 +86,12 @@ class BookingGroupCreator < ApplicationService
   end
 
   private
+
+  def serialized_extras
+    @extras_list.map do |extra, qty|
+      { "key" => extra.key, "name" => extra.name, "price_cents" => extra.price_cents, "quantity" => qty }
+    end
+  end
 
   def apply_available_credits(group, total_cents)
     target = @requested_credit_cents.nil? ? total_cents : @requested_credit_cents

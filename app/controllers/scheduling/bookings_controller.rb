@@ -51,6 +51,9 @@ class Scheduling::BookingsController < ApplicationController
     end
 
     @pricing  = result.value
+    @extras       = Extra.from_session(session[:cart_extras])
+    @extras_total = @extras.sum { |extra, qty| extra.price_cents * qty }
+    @order_total_cents = @pricing[:total_cents] + @extras_total
     @dentists = User.dentists.where(clinic: clinic).order(:name) if current_user.owner?
   end
 
@@ -93,11 +96,13 @@ class Scheduling::BookingsController < ApplicationController
       result = BookingGroupCreator.call(
         user:             current_user,
         availability_ids: cart_ids,
-        credit_cents:     credit_cents
+        credit_cents:     credit_cents,
+        extras:           session[:cart_extras]
       )
 
       if result.success?
         session.delete(:cart_ids)
+        session.delete(:cart_extras)
         redirect_to pagamento_path(result.value.payment),
           notice: "Reserva criada! Conclua o pagamento via Pix."
       else
