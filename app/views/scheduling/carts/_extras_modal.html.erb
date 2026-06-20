@@ -13,6 +13,7 @@
         <%= button_to add_extra_to_carrinho_path(extra_key: extra.id),
               method: :post, data: { turbo_stream: true },
               form: { class: "shrink-0" },
+              onclick: "this.closest('dialog').close()",
               class: "w-9 h-9 rounded-full flex items-center justify-center cursor-pointer",
               style: "background-color: #5D4037; color: #ffffff",
               aria: { label: "Adicionar #{extra.name}" } do %>

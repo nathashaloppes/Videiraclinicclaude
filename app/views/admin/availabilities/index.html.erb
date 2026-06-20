@@ -155,14 +155,14 @@
   </div>
 <% end %>
 
-<%# ── Botões: Turnos padrão / Serviços extra (centralizados, abaixo da lista) ─ %>
-<div class="mt-8 flex flex-col items-center gap-3">
+<%# ── Botões: Turnos padrão / Serviços extra (lado a lado, mesmo tamanho) ───── %>
+<div class="mt-8 flex justify-center gap-3">
   <%= link_to admin_shift_templates_path,
-        class: "btn-sm-outline inline-flex items-center gap-1.5 cursor-pointer" do %>
+        class: "btn-sm-outline flex-1 inline-flex items-center justify-center gap-1.5 cursor-pointer text-center whitespace-nowrap" do %>
     ⚙ Turnos padrão
   <% end %>
   <%= link_to admin_extras_path,
-        class: "btn-sm-outline inline-flex items-center gap-1.5 cursor-pointer" do %>
+        class: "btn-sm-outline flex-1 inline-flex items-center justify-center gap-1.5 cursor-pointer text-center whitespace-nowrap" do %>
     ✦ Serviços extra
   <% end %>
 </div>
