@@ -15,10 +15,10 @@
           class: "bg-white rounded-2xl shadow-sm p-5 flex items-center justify-center text-center min-w-0 active:scale-[0.98] transition-all" do %>
       <span class="text-sm font-medium uppercase tracking-wide" style="color: #5D4037">Carteira</span>
     <% end %>
-    <div class="bg-white rounded-2xl shadow-sm p-5 flex items-center justify-center opacity-50 cursor-not-allowed"
-         title="Em breve">
+    <%= link_to videira_shop_path,
+          class: "bg-white rounded-2xl shadow-sm p-5 flex items-center justify-center text-center min-w-0 active:scale-[0.98] transition-all" do %>
       <span class="text-sm font-medium uppercase tracking-wide" style="color: #5D4037">Videira Shop</span>
-    </div>
+    <% end %>
   </div>
 <% end %>
 

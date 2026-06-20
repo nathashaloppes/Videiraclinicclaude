@@ -42,7 +42,10 @@ class Scheduling::CartsController < ApplicationController
     @cart_availabilities = cart_availabilities
     respond_to do |format|
       format.turbo_stream { render :extras_update }
-      format.html { redirect_back(fallback_location: carrinho_path) }
+      format.html do
+        flash[:notice] = "#{extra.name} adicionado ao carrinho." if extra
+        redirect_back(fallback_location: carrinho_path)
+      end
     end
   end
 

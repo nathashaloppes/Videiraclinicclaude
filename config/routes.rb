@@ -18,6 +18,7 @@ Rails.application.routes.draw do
   get "sobre",   to: "pages#about",   as: :about
   get "contato", to: "pages#contact", as: :contact
   get "termos",  to: "pages#terms",   as: :terms
+  get "videira-shop", to: "shop#index", as: :videira_shop
 
   # ---- Perfil do usuário ------------------------------------
   resource :perfil, only: [:edit, :update], controller: "users/profiles",
