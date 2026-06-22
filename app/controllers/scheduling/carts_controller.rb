@@ -3,6 +3,7 @@ class Scheduling::CartsController < ApplicationController
 
   def show
     @cart_availabilities = cart_availabilities
+    @linkable_groups     = linkable_groups
   end
 
   def add
@@ -65,6 +66,28 @@ class Scheduling::CartsController < ApplicationController
     end
   end
 
+  # Compra de insumos avulsa: vincula a uma reserva confirmada existente e gera
+  # um pagamento Pix só dos insumos.
+  def purchase_extras
+    return redirect_to(new_user_session_path, alert: "Faça login para comprar insumos.") unless user_signed_in?
+
+    extras = Extra.from_session(session[:cart_extras])
+    return redirect_to(carrinho_path, alert: "Selecione ao menos um insumo.") if extras.empty?
+
+    group = BookingGroup.where(dentist: current_user, status: "confirmed").find_by(id: params[:booking_group_id])
+    unless group && future_group?(group)
+      return redirect_to carrinho_path, alert: "Selecione uma reserva válida (com turno futuro)."
+    end
+
+    result = ExtrasPurchaseCreator.call(booking_group: group, extras: extras)
+    if result.success?
+      session.delete(:cart_extras)
+      redirect_to pagamento_path(result.value), notice: "Insumos vinculados! Conclua o pagamento via Pix."
+    else
+      redirect_to carrinho_path, alert: result.error
+    end
+  end
+
   def destroy
     session.delete(:cart_ids)
     session.delete(:cart_extras)
@@ -72,6 +95,20 @@ class Scheduling::CartsController < ApplicationController
   end
 
   private
+
+  # Reservas confirmadas do cliente que têm ao menos um turno futuro (para
+  # vincular insumos comprados sem turno no carrinho).
+  def linkable_groups
+    return [] unless user_signed_in?
+    BookingGroup.where(dentist: current_user, status: "confirmed")
+      .includes(bookings: :availability)
+      .order(created_at: :desc)
+      .select { |g| future_group?(g) }
+  end
+
+  def future_group?(group)
+    group.bookings.any? { |b| b.availability && b.availability.date >= Date.current && !b.availability.past? }
+  end
 
   def cart_ids
     @cart_ids ||= Array(session[:cart_ids])

@@ -132,6 +132,7 @@ class BookingGroupCreator < ApplicationService
       booking_group: group,
       gateway:       "credit",
       amount_cents:  credits_applied,
+      extras:        serialized_extras,
       status:        "paid",
       paid_at:       Time.current
     )
@@ -147,6 +148,7 @@ class BookingGroupCreator < ApplicationService
       gateway:       "infinitepay",
       checkout_url:  result.value[:checkout_url],
       amount_cents:  amount_due,
+      extras:        serialized_extras,
       expires_at:    result.value[:expires_at],
       status:        "pending"
     )

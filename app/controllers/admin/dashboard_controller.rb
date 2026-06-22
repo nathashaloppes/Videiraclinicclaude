@@ -24,24 +24,14 @@ class Admin::DashboardController < Admin::BaseController
 
   private
 
-  # Divide o valor recebido no período entre turnos e insumos, proporcional ao
-  # peso dos insumos em cada pedido (garante turnos + insumos = receita total).
+  # Divide o valor recebido no período: cada pagamento carrega seus insumos
+  # (campo extras); o restante é turnos. Garante turnos + insumos = total.
   def split_revenue(clinic, range)
-    received = Hash.new(0)
-    Payment.paid.where(clinic: clinic, paid_at: range)
-      .where.not(booking_group_id: nil)
-      .pluck(:booking_group_id, :amount_cents)
-      .each { |gid, cents| received[gid] += cents }
-
     insumos = 0
-    BookingGroup.where(id: received.keys).find_each do |g|
-      got    = received[g.id]
-      total  = g.total_cents.to_i
-      extras = g.extras_total_cents
-      share  = total.positive? ? (got * extras / total.to_f).round : 0
-      insumos += [share, got].min
+    Payment.paid.where(clinic: clinic, paid_at: range).find_each do |p|
+      ext = Array(p.extras).sum { |e| e["price_cents"].to_i * e["quantity"].to_i }
+      insumos += [ext, p.amount_cents.to_i].min
     end
-
     [@monthly_revenue - insumos, insumos]
   end
 

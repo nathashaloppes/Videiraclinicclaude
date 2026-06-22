@@ -1,4 +1,5 @@
-<% if cart_availabilities.empty? %>
+<% cart_extras = Extra.from_session(session[:cart_extras]) %>
+<% if cart_availabilities.empty? && cart_extras.empty? %>
   <div class="empty-state">
     <p class="mb-4">Seu carrinho está vazio.</p>
     <%= link_to "Ver horários disponíveis", root_path, class: "btn-cta" %>
@@ -33,15 +34,14 @@
       </div>
     <% end %>
 
-    <%# Extras adicionados %>
-    <% cart_extras = Extra.from_session(session[:cart_extras]) %>
+    <%# Insumos adicionados %>
     <% cart_extras.each do |extra, qty| %>
       <div class="bg-white rounded-2xl shadow-sm p-4 flex items-center justify-between">
         <div class="flex-1 min-w-0">
           <p class="font-medium text-sm" style="color: #3E2723">
             <%= extra.name %><%= " ×#{qty}" if qty > 1 %>
           </p>
-          <p class="text-xs mt-0.5" style="color: #8D6E63">Extra</p>
+          <p class="text-xs mt-0.5" style="color: #8D6E63">Insumo</p>
         </div>
         <div class="flex items-center gap-3 shrink-0">
           <span class="text-sm font-medium" style="color: #5D4037">
@@ -69,15 +69,21 @@
     + Adicionar insumos
   </button>
 
-  <% clinic = cart_availabilities.first&.clinic %>
-  <% pricing = DiscountCalculator.call(availability_ids: cart_availabilities.map(&:id), clinic: clinic).value %>
+  <% if cart_availabilities.any? %>
+    <% clinic = cart_availabilities.first&.clinic %>
+    <% pricing = DiscountCalculator.call(availability_ids: cart_availabilities.map(&:id), clinic: clinic).value %>
+  <% else %>
+    <% pricing = { subtotal_cents: 0, discount_cents: 0, total_cents: 0 } %>
+  <% end %>
   <% extras_total = cart_extras.sum { |extra, qty| extra.price_cents * qty } %>
   <% total_cents = pricing[:total_cents] + extras_total %>
   <div class="rounded-2xl p-4 mb-6" style="background-color: #fef8e1">
-    <div class="flex justify-between text-sm mb-2" style="color: #8D6E63">
-      <span>Subtotal</span>
-      <span>R$ <%= money(pricing[:subtotal_cents]) %></span>
-    </div>
+    <% if cart_availabilities.any? %>
+      <div class="flex justify-between text-sm mb-2" style="color: #8D6E63">
+        <span>Subtotal</span>
+        <span>R$ <%= money(pricing[:subtotal_cents]) %></span>
+      </div>
+    <% end %>
     <% if pricing[:discount_cents] > 0 %>
       <div class="flex justify-between text-sm mb-2" style="color: #388E3C">
         <span>Desconto</span>
@@ -98,6 +104,14 @@
     </div>
   </div>
 
-  <%= link_to "FINALIZAR PEDIDO", confirmar_reservas_path,
-        class: "btn-primary w-full text-center block py-4 text-sm uppercase tracking-wide" %>
+  <% if cart_availabilities.any? %>
+    <%= link_to "FINALIZAR PEDIDO", confirmar_reservas_path,
+          class: "btn-primary w-full text-center block py-4 text-sm uppercase tracking-wide" %>
+  <% else %>
+    <%# Só insumos: precisa vincular a uma reserva confirmada %>
+    <button type="button" onclick="<%= open_modal('link-reservation-modal') %>"
+            class="btn-primary w-full text-center block py-4 text-sm uppercase tracking-wide cursor-pointer">
+      FINALIZAR PEDIDO
+    </button>
+  <% end %>
 <% end %>

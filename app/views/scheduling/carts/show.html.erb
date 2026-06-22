@@ -16,3 +16,38 @@
 
 <%# Modal de extras — fora de #cart-items para permanecer aberto ao adicionar %>
 <%= render "extras_modal" %>
+
+<%# Modal: vincular insumos a uma reserva (quando o carrinho tem só insumos) %>
+<%= render layout: "shared/modal", locals: { id: "link-reservation-modal", title: "Vincular a uma reserva", closable: true } do %>
+  <% if !user_signed_in? %>
+    <p class="text-sm mb-4" style="color:#8D6E63">
+      Faça login para comprar insumos.
+    </p>
+    <%= link_to "Entrar", new_user_session_path, class: "btn-primary w-full text-center block" %>
+  <% elsif @linkable_groups.blank? %>
+    <p class="text-sm mb-4" style="color:#8D6E63">
+      É preciso ter um turno reservado (com data futura) para comprar insumos.
+      Reserve um turno e depois adicione seus insumos.
+    </p>
+    <%= link_to "Ver horários disponíveis", root_path, class: "btn-primary w-full text-center block" %>
+  <% else %>
+    <p class="text-sm mb-4" style="color:#8D6E63">
+      Escolha a reserva à qual estes insumos serão vinculados:
+    </p>
+    <div class="flex flex-col gap-2 max-h-72 overflow-y-auto">
+      <% @linkable_groups.each do |group| %>
+        <% b = group.bookings.detect { |bk| bk.availability && bk.availability.date >= Date.current && !bk.availability.past? } || group.bookings.first %>
+        <%= button_to purchase_extras_carrinho_path(booking_group_id: group.id),
+              method: :post, data: { turbo: false },
+              form: { class: "w-full" },
+              class: "w-full rounded-2xl p-3 border hover:bg-[#fef8e1] cursor-pointer transition-colors text-left",
+              style: "border-color:#E0E0E0" do %>
+          <span class="block text-sm font-medium" style="color:#3E2723"><%= b.availability.label %></span>
+          <span class="block text-xs" style="color:#8D6E63">
+            <%= l(b.availability.date, format: "%d/%m") %> · <%= b.availability.starts_at.strftime("%H:%M") %>–<%= b.availability.ends_at.strftime("%H:%M") %>
+          </span>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

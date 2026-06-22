@@ -124,7 +124,7 @@
   <% else %>
     <div class="flex flex-col gap-0">
       <% @booking_groups.each_with_index do |group, i| %>
-        <% extra = group.payments.sort_by(&:created_at).drop(1).sum(&:amount_cents) %>
+        <% extra = group.payments.reject { |p| p.extras.present? }.sort_by(&:created_at).drop(1).sum(&:amount_cents) %>
         <% credit = @group_credits[group.id] %>
         <div class="py-3 <%= i > 0 ? 'border-t' : '' %>" style="border-color: #F5F5F5">
           <div class="flex items-start justify-between gap-2">
@@ -145,6 +145,11 @@
               </div>
             </div>
           </div>
+          <% Array(group.extras).each do |ins| %>
+            <p class="text-xs mt-1" style="color: #8D6E63">
+              Insumo: <%= ins["name"] %><%= " ×#{ins["quantity"]}" if ins["quantity"].to_i > 1 %> — R$ <%= money(ins["price_cents"].to_i * ins["quantity"].to_i) %>
+            </p>
+          <% end %>
           <% if extra.positive? %>
             <p class="text-xs mt-1" style="color: #8D6E63">Diferença paga (alteração): R$ <%= money(extra) %></p>
           <% end %>
