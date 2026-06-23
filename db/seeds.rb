@@ -105,9 +105,9 @@ end
 begin
   isadora = User.find_by("email ILIKE ?", "%isadora.monteiro.melo%")
   if isadora
-    Credit.where(user: isadora, amount_cents: 32000, in_revenue: true)
-          .where("reason ILIKE ?", "%admin%")
-          .update_all(in_revenue: false)
+    n = Credit.where(user: isadora, amount_cents: 32000, in_revenue: true)
+              .update_all(in_revenue: false)
+    puts "  Crédito Isadora corrigido (fora da receita): #{n} registro(s)"
   end
 rescue => e
   puts "  [aviso] correção do crédito da Isadora pulada: #{e.class}: #{e.message}"
