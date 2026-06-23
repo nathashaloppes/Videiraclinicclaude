@@ -45,12 +45,30 @@ class BookingGroup < ApplicationRecord
   end
 
   def release_bookings!(final_status:)
+    was_pending = pending?
     transaction do
       update!(status: final_status)
       bookings.each do |b|
         b.update!(status: "cancelled")
         b.availability.update!(status: "available")
       end
+      # Reserva não paga liberada: devolve o crédito que havia sido aplicado
+      # (para reservas confirmadas, o reembolso é feito pelo CreditIssuer).
+      refund_applied_credit! if was_pending
     end
+  end
+
+  # Crédito usado nesta reserva = total − o que faltava pagar por fora (Pix).
+  def refund_applied_credit!
+    external_due = payments.where.not(gateway: "credit").sum(:amount_cents)
+    applied      = total_cents.to_i - external_due.to_i
+    return if applied <= 0
+
+    Credit.create!(
+      user:         dentist,
+      clinic:       clinic,
+      amount_cents: applied,
+      reason:       "Estorno de crédito (reserva não paga)"
+    )
   end
 end
