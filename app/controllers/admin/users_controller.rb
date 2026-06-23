@@ -98,6 +98,7 @@ class Admin::UsersController < Admin::BaseController
       return redirect_to admin_user_path(@user), alert: "Valor inválido."
     end
     Credit.create!(user: @user, clinic: current_user.clinic, amount_cents: amount_cents,
+                   in_revenue: params[:in_revenue] == "1",
                    reason: "Crédito adicionado pelo admin")
     redirect_to admin_user_path(@user), notice: "Crédito adicionado com sucesso."
   end

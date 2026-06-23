@@ -7,10 +7,9 @@ class Admin::DashboardController < Admin::BaseController
       .joins(:availability)
       .where(availabilities: { date: Date.current }).count
 
-    # Saldo de crédito disponível nas carteiras (dinheiro real que entrou e ainda
-    # não virou reserva). Inclui recarga e reembolso de cancelamento; exclui
-    # crédito promocional (não é dinheiro que entrou na conta).
-    @available_credits = Credit.available.where(clinic: clinic)
+    # Saldo de crédito disponível nas carteiras que ENTRA na receita (in_revenue).
+    # Exclui crédito promocional e os marcados para não entrar na receita.
+    @available_credits = Credit.available.where(clinic: clinic, in_revenue: true)
       .where.not("reason ILIKE ?", "%promocional%")
       .sum(:amount_cents)
 
@@ -29,12 +28,18 @@ class Admin::DashboardController < Admin::BaseController
   private
 
   def revenue_split(clinic, range)
+    groups = confirmed_groups(clinic).select { |g| range.cover?(group_paid_at(g)) }
+    # Crédito "fora da receita" usado na reserva é abatido do valor que conta.
+    off_books = Credit.where(used_on_booking_group: groups.map(&:id), in_revenue: false)
+                      .group(:used_on_booking_group_id).sum(:amount_cents)
+
     turnos = insumos = 0
-    confirmed_groups(clinic).each do |g|
-      next unless range.cover?(group_paid_at(g))
-      ins = extras_cents(g.extras)
-      turnos  += [g.total_cents.to_i - ins, 0].max
-      insumos += ins
+    groups.each do |g|
+      ins       = extras_cents(g.extras)
+      countable = [g.total_cents.to_i - off_books[g.id].to_i, 0].max
+      g_insumos = [ins, countable].min   # off-books reduz turnos primeiro
+      insumos  += g_insumos
+      turnos   += countable - g_insumos
     end
     [turnos, insumos]
   end
