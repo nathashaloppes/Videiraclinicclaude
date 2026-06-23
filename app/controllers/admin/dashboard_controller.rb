@@ -7,18 +7,18 @@ class Admin::DashboardController < Admin::BaseController
       .joins(:availability)
       .where(availabilities: { date: Date.current }).count
 
-    # Turnos no carrinho ainda não pagos (grupos com pagamento pendente)
-    @pending_payments = Booking.where(clinic: clinic)
-      .joins(booking_group: :payment)
-      .where(payments: { status: "pending" }).count
+    # Saldo de crédito disponível nas carteiras dos clientes (dinheiro que entrou
+    # e ainda não virou reserva). Cancelamento devolve valor para cá.
+    @available_credits = Credit.available.where(clinic: clinic).sum(:amount_cents)
 
-    # Receita = valor das reservas CONFIRMADAS, contado uma vez por reserva
-    # (turnos = total − insumos). Exclui reservas pagas INTEIRAMENTE com crédito
-    # do cliente (essas não são dinheiro novo) e canceladas/expiradas. Reservas
-    # com qualquer pagamento externo (Pix/admin) contam pelo valor total.
+    # Receita das reservas CONFIRMADAS no mês, contada uma vez por reserva
+    # (turnos = total − insumos). Reservas pagas com crédito também contam (o
+    # crédito vira receita ao ser usado). Canceladas/expiradas não entram.
     range = Date.current.beginning_of_month..Date.current.end_of_month
     @monthly_turnos, @monthly_insumos = revenue_split(clinic, range)
-    @monthly_revenue = @monthly_turnos + @monthly_insumos
+
+    # Total do mês = tudo que entrou na conta: turnos + insumos + créditos.
+    @monthly_revenue = @monthly_turnos + @monthly_insumos + @available_credits
 
     @monthly_series = build_monthly_series(clinic, months: 6)
   end
@@ -27,7 +27,7 @@ class Admin::DashboardController < Admin::BaseController
 
   def revenue_split(clinic, range)
     turnos = insumos = 0
-    countable_groups(clinic).each do |g|
+    confirmed_groups(clinic).each do |g|
       next unless range.cover?(group_paid_at(g))
       ins = extras_cents(g.extras)
       turnos  += [g.total_cents.to_i - ins, 0].max
@@ -36,26 +36,8 @@ class Admin::DashboardController < Admin::BaseController
     [turnos, insumos]
   end
 
-  # Reservas confirmadas lastreadas por dinheiro REAL: pagamento externo
-  # (Pix/admin) ou crédito de recarga paga / Pix convertido. Exclui as pagas só
-  # com crédito promocional ou reembolso (que não é dinheiro novo).
-  def countable_groups(clinic)
-    @countable_groups ||= begin
-      groups = BookingGroup.where(clinic: clinic, status: "confirmed").includes(:payments).to_a
-      credits = Credit.where(used_on_booking_group: groups.map(&:id)).group_by(&:used_on_booking_group_id)
-      groups.select { |g| real_revenue_group?(g, credits[g.id] || []) }
-    end
-  end
-
-  def real_revenue_group?(group, used_credits)
-    return true if group.payments.any? { |p| p.paid? && %w[infinitepay admin].include?(p.gateway) }
-    used_credits.any? { |cr| real_money_credit?(cr) }
-  end
-
-  # Crédito que representa dinheiro que entrou de verdade (não promo/reembolso).
-  def real_money_credit?(credit)
-    r = credit.reason.to_s.downcase
-    r.start_with?("recarga") || r.include?("pix recebido")
+  def confirmed_groups(clinic)
+    @confirmed_groups ||= BookingGroup.where(clinic: clinic, status: "confirmed").includes(:payments).to_a
   end
 
   # Mês da receita: data do 1º pagamento confirmado (fallback: criação).
@@ -68,7 +50,7 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def build_monthly_series(clinic, months:)
-    groups = countable_groups(clinic)
+    groups = confirmed_groups(clinic)
     today  = Date.current
     (0...months).map { |i| (today << i).beginning_of_month }.reverse.map do |start|
       range = start..start.end_of_month
