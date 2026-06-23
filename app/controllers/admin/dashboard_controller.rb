@@ -24,15 +24,32 @@ class Admin::DashboardController < Admin::BaseController
 
   private
 
-  # Divide o valor recebido no período: cada pagamento carrega seus insumos
-  # (campo extras); o restante é turnos. Garante turnos + insumos = total.
+  # Divide o valor recebido no período entre turnos e insumos.
+  # Cada pagamento carrega seus insumos (payment.extras); para pagamentos antigos
+  # sem esse dado, usa os insumos do grupo (group.extras). Conta uma vez por grupo
+  # e limita ao valor recebido (turnos + insumos = total).
   def split_revenue(clinic, range)
+    paid = Payment.paid.where(clinic: clinic, paid_at: range).includes(:booking_group).to_a
     insumos = 0
-    Payment.paid.where(clinic: clinic, paid_at: range).find_each do |p|
-      ext = Array(p.extras).sum { |e| e["price_cents"].to_i * e["quantity"].to_i }
-      insumos += [ext, p.amount_cents.to_i].min
+
+    paid.group_by(&:booking_group_id).each do |gid, payments|
+      received = payments.sum { |p| p.amount_cents.to_i }
+      carried  = payments.sum { |p| extras_cents(p.extras) }
+      ext = if carried.positive?
+        carried
+      elsif gid
+        extras_cents(payments.first.booking_group&.extras)
+      else
+        0
+      end
+      insumos += [ext, received].min
     end
+
     [@monthly_revenue - insumos, insumos]
+  end
+
+  def extras_cents(extras)
+    Array(extras).sum { |e| e["price_cents"].to_i * e["quantity"].to_i }
   end
 
   def build_monthly_series(clinic, months:)
