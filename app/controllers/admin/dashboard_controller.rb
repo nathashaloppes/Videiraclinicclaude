@@ -36,12 +36,26 @@ class Admin::DashboardController < Admin::BaseController
     [turnos, insumos]
   end
 
-  # Reservas confirmadas com ao menos um pagamento externo (não pagas só com
-  # crédito do cliente).
+  # Reservas confirmadas lastreadas por dinheiro REAL: pagamento externo
+  # (Pix/admin) ou crédito de recarga paga / Pix convertido. Exclui as pagas só
+  # com crédito promocional ou reembolso (que não é dinheiro novo).
   def countable_groups(clinic)
-    BookingGroup.where(clinic: clinic, status: "confirmed").includes(:payments).select do |g|
-      g.payments.any? { |p| p.paid? && p.gateway != "credit" }
+    @countable_groups ||= begin
+      groups = BookingGroup.where(clinic: clinic, status: "confirmed").includes(:payments).to_a
+      credits = Credit.where(used_on_booking_group: groups.map(&:id)).group_by(&:used_on_booking_group_id)
+      groups.select { |g| real_revenue_group?(g, credits[g.id] || []) }
     end
+  end
+
+  def real_revenue_group?(group, used_credits)
+    return true if group.payments.any? { |p| p.paid? && %w[infinitepay admin].include?(p.gateway) }
+    used_credits.any? { |cr| real_money_credit?(cr) }
+  end
+
+  # Crédito que representa dinheiro que entrou de verdade (não promo/reembolso).
+  def real_money_credit?(credit)
+    r = credit.reason.to_s.downcase
+    r.start_with?("recarga") || r.include?("pix recebido")
   end
 
   # Mês da receita: data do 1º pagamento confirmado (fallback: criação).
