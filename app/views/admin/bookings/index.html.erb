@@ -93,6 +93,11 @@
                 , <%= b.availability.starts_at.strftime("%H:%M") %> às <%= b.availability.ends_at.strftime("%H:%M") %>
               </p>
             <% end %>
+            <% Array(group.extras).each do |ins| %>
+              <p class="text-[11px] mt-0.5" style="color: #8D6E63">
+                + <%= ins["name"] %><%= " ×#{ins["quantity"]}" if ins["quantity"].to_i > 1 %> (insumo) — R$ <%= money(ins["price_cents"].to_i * ins["quantity"].to_i) %>
+              </p>
+            <% end %>
             <p class="text-sm font-medium mt-1" style="color: #5D4037">
               R$ <%= money(group.total_cents) %>
             </p>
