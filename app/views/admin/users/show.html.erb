@@ -114,6 +114,27 @@
   </div>
 </div>
 
+<%# Desconto por turno do cliente %>
+<div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
+  <h2 class="font-medium mb-1 text-sm" style="color: #5D4037">Desconto por turno</h2>
+  <p class="text-xs mb-3" style="color: #8D6E63">
+    Abatido de cada turno reservado por este cliente (não vale para hora avulsa/diária).
+  </p>
+  <%= form_with url: admin_user_path(@user), method: :patch, data: { turbo: false }, class: "flex items-end gap-2" do %>
+    <div class="flex-1">
+      <label class="label">Valor por turno</label>
+      <div class="bg-[#fef8e1] rounded-2xl px-4 py-1">
+        <input type="text" inputmode="numeric" name="user[discount_per_slot]"
+               value="<%= number_with_precision(@user.discount_per_slot, precision: 2, separator: ',', delimiter: '') if @user.discount_per_slot_cents.to_i.positive? %>"
+               placeholder="R$ 0,00"
+               data-controller="input-mask" data-input-mask-pattern-value="money"
+               class="w-full bg-transparent border-none outline-none py-3 text-sm" style="color: #3E2723">
+      </div>
+    </div>
+    <button type="submit" class="btn-sm-primary cursor-pointer shrink-0 py-3!">Salvar</button>
+  <% end %>
+</div>
+
 <%# Histórico de transações %>
 <div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
   <div class="mb-3">
