@@ -3,7 +3,10 @@ class Admin::UsersController < Admin::BaseController
 
   def index
     scope = policy_scope(User).where.not(role: "owner").order(:name)
-    scope = scope.where("name ILIKE ?", "%#{params[:q]}%") if params[:q].present?
+    if params[:q].present?
+      term  = "%#{params[:q].strip}%"
+      scope = scope.where("name ILIKE :q OR email ILIKE :q", q: term)
+    end
     @pagy, @users = pagy(scope)
   end
 
